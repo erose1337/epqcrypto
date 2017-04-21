@@ -1,0 +1,6 @@
+to do list:
+    - Fix public key randomization (keyexchange.py)
+    - Improve serializer to use less space (persistence.py)
+    - improve AEAD (aead.py)
+        - use permuter construction (from crypto.designs.permutation)
+    

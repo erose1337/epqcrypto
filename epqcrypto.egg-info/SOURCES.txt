@@ -1,0 +1,5 @@
+setup.py
+epqcrypto.egg-info/PKG-INFO
+epqcrypto.egg-info/SOURCES.txt
+epqcrypto.egg-info/dependency_links.txt
+epqcrypto.egg-info/top_level.txt
