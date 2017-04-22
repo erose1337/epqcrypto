@@ -53,7 +53,7 @@ def exchange_key(random_secret, public_key, r_size=SECRET_SIZE):
                             r_size=SECRET_SIZE) => encrypted random_secret
                             
         Creates a ciphertext from random_secret that only the holder of the private key may recover the plaintext from.
-        Ciphertexts are of the form p1q1 + p2q2 + e. """        
+        Ciphertexts are of the form p1q1 + p2q2 + e. """            
     pb1, pb2 = public_key
     r1, r2 = secretkey.random_integer(r_size), secretkey.random_integer(r_size)
     return ((pb1 * r1) + (pb2 * r2)) + random_secret
@@ -108,18 +108,15 @@ def test_exchange_key_recover_key():
     hamming_weight = lambda number: format(number, 'b').count('1')
     print("Public key size : {} + {} = {}".format(hamming_weight(public_key[0]), hamming_weight(public_key[1]), sum(hamming_weight(item) for item in public_key)))
     print("Private key size: {}".format(sum(hamming_weight(item) for item in private_key)))        
-    ciphertext_size = []
-    public_keys = []
+    ciphertext_size = []    
     for counter in range(65536):
-        message = secretkey.random_integer(32)
+        message = secretkey.random_integer(32)        
         _public_key = randomize_public_key(public_key)
         ciphertext = exchange_key(message, _public_key)    
         plaintext = recover_key(ciphertext, private_key)
         assert plaintext == message, (counter, plaintext, message)
-        ciphertext_size.append(hamming_weight(ciphertext))
-        public_keys.append(_public_key)
-    print("Transported secret size : {}".format(sum(ciphertext_size) / float(len(ciphertext_size))))
-    print("Number of unique public keys used: {} (out of {})".format(len(set(public_keys)), counter + 1))
+        ciphertext_size.append(hamming_weight(ciphertext))        
+    print("Transported secret size : {}".format(sum(ciphertext_size) / float(len(ciphertext_size))))    
     print("key exchange exchange_key/recover_key unit test passed")
     
 def test_exchange_key_time():
