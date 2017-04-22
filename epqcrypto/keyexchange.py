@@ -45,10 +45,7 @@ def generate_keypair():
         A public key consists of 2 different numbers, which are both homomorphic encryptions of 0.
         The nature of the private key depends on the secret key cipher that is used to instantiate the scheme. """
     private_key = generate_private_key()    
-    public_key = generate_public_key(private_key)
-    _public_key = randomize_public_key(public_key)
-    assert _public_key != public_key
-    public_key = _public_key
+    public_key = generate_public_key(private_key)    
     return public_key, private_key
     
 def exchange_key(random_secret, public_key, r_size=SECRET_SIZE): 
@@ -68,8 +65,8 @@ def recover_key(ciphertext, private_key, decryption_function=secretkey.decrypt):
         Returns the random_secret that was encrypted using the public key. """
     return decryption_function(ciphertext, private_key)     
     
-def _randomize_key(pb1, pb2, r=lambda: secretkey.random_integer(8)):
-    new_key = lambda: (pb1 * r()) - (pb2 * r()) + (pb1 * r()) + (pb2 * r())    
+def _randomize_key(pb1, pb2, r=lambda size=8: secretkey.random_integer(size)):
+    new_key = lambda: (pb1 * r()) - (pb2 * r(7)) + (pb1 * r()) - (pb2 * r(7))    
     key = new_key()    
     while key < 0 or log(key, 2) > 1200: # re-roll if it's negative or too big        
         key = new_key()    
@@ -112,14 +109,17 @@ def test_exchange_key_recover_key():
     print("Public key size : {} + {} = {}".format(hamming_weight(public_key[0]), hamming_weight(public_key[1]), sum(hamming_weight(item) for item in public_key)))
     print("Private key size: {}".format(sum(hamming_weight(item) for item in private_key)))        
     ciphertext_size = []
+    public_keys = []
     for counter in range(65536):
         message = secretkey.random_integer(32)
-        ciphertext = exchange_key(message, public_key)    
+        _public_key = randomize_public_key(public_key)
+        ciphertext = exchange_key(message, _public_key)    
         plaintext = recover_key(ciphertext, private_key)
         assert plaintext == message, (counter, plaintext, message)
         ciphertext_size.append(hamming_weight(ciphertext))
-        
+        public_keys.append(_public_key)
     print("Transported secret size : {}".format(sum(ciphertext_size) / float(len(ciphertext_size))))
+    print("Number of unique public keys used: {} (out of {})".format(len(set(public_keys)), counter + 1))
     print("key exchange exchange_key/recover_key unit test passed")
     
 def test_exchange_key_time():
@@ -133,7 +133,7 @@ def test_exchange_key_time():
     before = timer()
         
     message = 1
-    for number in range(1024 * 8):                
+    for number in range(1024 * 8):                       
         ciphertext = exchange_key(message, public_key)
         key = recover_key(ciphertext, private_key)
     after = timer()
