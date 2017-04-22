@@ -1,5 +1,5 @@
 """ Python implementation of a secret key based key exchange algorithm.
-    A public key consists of two homomorphic encryptions of 0 of roughly similar size.
+    A public key consists of two homomorphic encryptions of 0, of roughly similar size in bits.
     The public key encryption method:
         - multiply each encryption of 0 by a random amount
         - add the two products together
@@ -146,4 +146,3 @@ if __name__ == "__main__":
     test_serialized_public_key_deserialize_public_key()
     test_exchange_key_recover_key()
     test_exchange_key_time()
-    

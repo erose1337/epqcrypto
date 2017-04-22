@@ -1,4 +1,12 @@
-""" Effectively equivalent/very similar to the DoubleMod construction.
+""" Effectively equivalent/very similar to the DoubleMod construction.    
+    Keygen:
+        p2_size := p1_size / 3
+        p1, p2 = random_integer(p1_size), random_integer(p2_size)
+    Encrypt:
+        q1, q2 = random_integer(p1_size), random_integer(p2_size)
+        p1q1 + p2q2 + m
+    Decrypt:
+        (c % p1) % p2            
     to-do: solidify parameter sizes. """
 
 from os import urandom
