@@ -70,6 +70,8 @@ def recover_key(ciphertext, private_key, decryption_function=secretkey.decrypt):
     
 def _randomize_key(pb1, pb2, r=lambda: secretkey.random_integer(8)):
     new_key = lambda: (pb1 * r()) - (pb2 * r()) + (pb1 * r()) + (pb2 * r())    
+    key = new_key()    
+    while key < 0 or log(key, 2) > 1200: # re-roll if it's negative or too big        
         key = new_key()    
     assert key % pb1 != 0
     assert key % pb2 != 0    
