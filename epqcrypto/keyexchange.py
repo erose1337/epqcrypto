@@ -46,8 +46,9 @@ def generate_keypair():
         The nature of the private key depends on the secret key cipher that is used to instantiate the scheme. """
     private_key = generate_private_key()    
     public_key = generate_public_key(private_key)
-   # _public_key = randomize_public_key(public_key)
-   # assert _public_key != public_key
+    _public_key = randomize_public_key(public_key)
+    assert _public_key != public_key
+    public_key = _public_key
     return public_key, private_key
     
 def exchange_key(random_secret, public_key, r_size=SECRET_SIZE): 
@@ -67,27 +68,22 @@ def recover_key(ciphertext, private_key, decryption_function=secretkey.decrypt):
         Returns the random_secret that was encrypted using the public key. """
     return decryption_function(ciphertext, private_key)     
     
-def _randomize_key(key, r = lambda: secretkey.random_integer(8)):
-    _key = (key * r()) - (key * r()) + (key * r()) + (key * r())           
-    while _key < 0 or log(_key, 2) > 1200: # re-roll if it's negative or too big
-        _key = (key * r()) - (key * r()) + (key * r()) + (key * r())          
-    return _key
+def _randomize_key(pb1, pb2, r=lambda: secretkey.random_integer(8)):
+    new_key = lambda: (pb1 * r()) - (pb2 * r()) + (pb1 * r()) + (pb2 * r())    
+        key = new_key()    
+    assert key % pb1 != 0
+    assert key % pb2 != 0    
+    return key
     
 def randomize_public_key(public_key):    
     """ usage: randomize_public_key(public_key) => randomized public_key
     
         Returns a randomized public key. 
         The resultant public key is still linked with the same private key, but it should not be possible to associate the new public key with the original one. """ 
-    raise NotImplementedError()
-    pub1, pub2 = public_key
-    _pub1 = pub1
-    pub1 = _randomize_key(pub1 + pub2)
-    assert not _pub1 % pub1 or pub1 % _pub1
-    _pub2 = pub2
-    pub2 = _randomize_key(_pub1 + pub2)    
-    assert not _pub2 % pub2 or pub2 % _pub2
-    assert pub1 > 0 and pub2 > 0, (pub1, pub2)
-    return pub1, pub2        
+    pb1, pb2 = public_key
+    new1 = _randomize_key(pb1, pb2)
+    new2 = _randomize_key(pb1, pb2)
+    return new1, new2    
   
 # serialization  
 def serialize_public_key(public_key):
