@@ -14,32 +14,25 @@ from aead import encrypt, decrypt
 from persistence import save_data, load_data
 
 class Key_Exchange_Protocol(object):
-
-    STAGES = ["initiating exchange", "establishing shared secret", "waiting for confirmation code"]
-    
+        
     def __init__(self, public_key, private_key, hash_function=hash_function, secret_size=32):
         self.public_key = public_key
         self.private_key = private_key
         self.hash_function = hash_function
         self.secret_size = secret_size
         self.confirm_connection_string = "Good happy success :)"
-        self.confirmation_code_size = len(hmac('', ''))
-        self.stages = iter(Key_Exchange_Protocol.STAGES)
-        self.stage = None
+        self.confirmation_code_size = len(hmac('', ''))              
         
     def initiate_exchange(self, others_public_key):
-        self.stage = next(self.stages)
         secret = self.secret_a = keyexchange.generate_random_secret(self.secret_size)
         return keyexchange.exchange_key(secret, others_public_key)
         
-    def establish_secret(self, ciphertext):        
-        self.stage = next(self.stages)
+    def establish_secret(self, ciphertext):                
         secret_b = keyexchange.recover_key(ciphertext, self.private_key)
         self.shared_secret = self.hash_function(utilities.integer_to_bytes(self.secret_a ^ secret_b, self.secret_size))
         del self.secret_a
         
-    def generate_confirmation_code(self):
-        self.stage = next(self.stages)
+    def generate_confirmation_code(self):        
         self.confirmation_code = hmac(self.confirm_connection_string, self.shared_secret)
         return self.confirmation_code
         
@@ -84,9 +77,9 @@ class Replay_Attack_Countermeasure(object):
         self.hash_size = len(hash_function(''))
         self.state = bytearray(self.hash_size)
         
-    def send(self, data):
+    def send(self, data):        
         self.nonce += 1                     
-        nonce = self.nonce
+        nonce = self.nonce        
         _hash = self.hash_function(str(nonce) + self.state + data)        
         utilities.xor_subroutine(self.state, bytearray(_hash))                                
         return save_data((nonce, _hash, data))
@@ -98,7 +91,7 @@ class Replay_Attack_Countermeasure(object):
             raise ValueError("Invalid nonce")
         else:            
             self.last_received_none += 1
-                
+ 
         if self.hash_function(str(nonce) + self.state + data) != _hash:
             raise ValueError("Invalid hash")
             
@@ -151,57 +144,84 @@ class Basic_Connection(object):
         
      
 class Secure_Connection(Basic_Connection):
-        
+            
+    _trust_public_key_prompt = "Add public key fingerprint:\n{}\nto trusted keys?: "      
+    
     def __init__(self, public_key, private_key, hash_function=hash_function, secret_size=32):
         super(Secure_Connection, self).__init__()
-        self.key_exchange_protocol = Key_Exchange_Protocol(public_key, private_key, hash_function, secret_size)
-        self.signature_public_key, self.signature_private_key = witnesssignatures.generate_keypair()
-        self.connection_confirmed = False
+        self.key_exchange_protocol = Key_Exchange_Protocol(public_key, private_key, hash_function, secret_size)        
+        self.signature_public_key, self.signature_private_key = witnesssignatures.generate_keypair()        
         self.pending_signature_requests = {}
+        self.stage = "unconnected"
+        self.trusted_public_keys = []
+        self.connection_confirmed = False
         
     def connect(self, peer_public_key):
         """ usage: self.connect(peer_public_key) => packet
             
             Create a packet for initializing a secure connection with the desired peer.
             The packet needs no modification, and can be sent as-is via the IO method of choice (i.e. socket.send)
-            The receiving peer should supply the packet to the accept method. """
+            The receiving peer should supply the packet to the accept method. """        
+        assert self.stage == "unconnected"
         protocol = self.key_exchange_protocol
         public_key = keyexchange.serialize_public_key(protocol.public_key)        
-        packet = save_data(public_key, protocol.initiate_exchange(peer_public_key))        
+        packet = save_data(public_key, protocol.initiate_exchange(peer_public_key))  
+        self.stage = "connecting"
         return self.send(packet)
         
     def accept(self, packet):                
         """ usage: self.accept(packet) => response
             
             Initializes a secure connection with the remote peer.
-            Returns a response packet, which the remote peer should supply to the initiator_confirm_connection method. """
+            Returns a response packet, which the remote peer should supply to the initiator_confirm_connection method. """        
+        assert self.stage == "unconnected"
         packet = self.receive(packet)
         serialized_key, challenge = load_data(packet)        
         peer_public_key = keyexchange.deserialize_public_key(serialized_key)
-                
-        protocol = self.key_exchange_protocol
-        _challenge = protocol.initiate_exchange(peer_public_key)
-        protocol.establish_secret(challenge)
-        code = protocol.generate_confirmation_code()
-        
-        response = save_data(code, _challenge)
+            
+        protocol = self.key_exchange_protocol            
+        if self.validate_public_key(peer_public_key):                   
+            _challenge = protocol.initiate_exchange(peer_public_key)            
+            protocol.establish_secret(challenge)
+            code = protocol.generate_confirmation_code()
+        else:
+            _challenge = protocol.initiate_exchange(urandom(32))
+            protocol.establish_secret(urandom(140))
+            code = urandom(protocol.confirmation_code_size)            
+            
+        self.stage = "accepted:confirming"
+        response = save_data(code, _challenge)        
         return self.send(response)
     
+    def validate_public_key(self, peer_public_key):    
+        fingerprint = keyexchange.hash_public_key(self.key_exchange_protocol.hash_function, peer_public_key)        
+        if fingerprint in self.trusted_public_keys:
+            return True
+        elif utilities.get_permission(self._trust_public_key_prompt.format(fingerprint, peer_public_key)):
+            self.trusted_public_keys.append(fingerprint)
+            return True                
+        else:
+            return False
+            
     def initiator_confirm_connection(self, packet): 
         """ usage: self.initiator_confirm_connection(packet) => response
             
             Finishes initializing a secure connection with the peer.
-            Returns a confirmation code, that should be sent to the remote peer and supplied to the responder_confirm_connection method. """
+            Returns a confirmation code, that should be sent to the remote peer and supplied to the responder_confirm_connection method. """                
+        assert self.stage == "connecting"
         packet = self.receive(packet)
         protocol = self.key_exchange_protocol
         code, _challenge = load_data(packet)
         
-        protocol.establish_secret(_challenge)
+        protocol.establish_secret(_challenge)        
         self_code = protocol.generate_confirmation_code()
         if protocol.confirm_connection(code):            
-            _response = self.send(self_code)
+            _response = self.send(self_code) # must do before setting connection_confirmed to True
+            self.stage = "secured"
             self.connection_confirmed = True
             return _response
+        else:
+            raise ValueError("Invalid confirmation code")
             
     def responder_confirm_connection(self, packet):  
         """ usage: self.responder_confirm_connection(packet) => None
@@ -209,8 +229,10 @@ class Secure_Connection(Basic_Connection):
             Confirms a successful connection with the peer.
             Raises ValueError when the connection fails.
             Otherwise, sets the self.connection_confirmed flag to True. """
+        assert self.stage == "accepted:confirming"
         confirmation_code = self.receive(packet)
         if self.key_exchange_protocol.confirm_connection(confirmation_code):
+            self.stage = "secured"
             self.connection_confirmed = True
         else:
             raise ValueError("Connection failed")
@@ -235,7 +257,7 @@ class Secure_Connection(Basic_Connection):
             data = self._access_secured_data(data)                    
         return data
         
-    def _secure_data(self, data):           
+    def _secure_data(self, data): # to do: derive keys properly
         return encrypt(data, self.key_exchange_protocol.shared_secret, self.key_exchange_protocol.shared_secret)
                   
     def _access_secured_data(self, data):    
@@ -263,7 +285,7 @@ class Secure_Connection(Basic_Connection):
             If the data is not signed, then signature verification will simply fail. 
             The returned packet should be supplied to the validate_signature method of the peer. """
         packet = self.receive(packet)
-        signature_request, tag, data = load_data(packet)   
+        signature_request, tag, data = load_data(packet)           
         if decision_function(data):
             signature, signing_key = witnesssignatures.sign_requested_data(data, signature_request, self.signature_private_key, tag)
         else:

@@ -10,6 +10,7 @@
     to-do: solidify parameter sizes. """
 
 from os import urandom
+from math import log
 from fractions import gcd
 
 __all__ = ["generate_key", "encrypt", "decrypt"]
@@ -51,6 +52,8 @@ def encrypt(message_integer, secret_key, r_size=R_SIZE):
         Ciphertexts are of the form p1q1 + p2q2 + m
         Ciphertexts are homomorphic with respect to integer addition. """
     p1, p2 = secret_key
+    if message_integer and log(message_integer, 2) >= (log(p2, 2)):
+        raise ValueError("message_integer too large to be encrypted with the supplied key p2: {}; m: {}".format(log(p2, 2), log(message_integer, 2)))
     p1 *= random_integer(r_size)
     _p2 = p2 * random_integer(r_size)
     while _p2 > p1:

@@ -55,7 +55,9 @@ def exchange_key(random_secret, public_key, r_size=SECRET_SIZE):
         Creates a ciphertext from random_secret that only the holder of the private key may recover the plaintext from.
         Ciphertexts are of the form p1q1 + p2q2 + e. """            
     pb1, pb2 = public_key
-    r1, r2 = secretkey.random_integer(r_size), secretkey.random_integer(r_size)
+    assert pb1 != 0
+    assert pb2 != 0
+    r1, r2 = secretkey.random_integer(r_size), secretkey.random_integer(r_size) 
     return ((pb1 * r1) + (pb2 * r2)) + random_secret
     
 def recover_key(ciphertext, private_key, decryption_function=secretkey.decrypt):    
@@ -83,7 +85,10 @@ def randomize_public_key(public_key):
     new1 = _randomize_key(pb1, pb2)
     new2 = _randomize_key(pb1, pb2)
     return new1, new2    
-  
+
+def hash_public_key(hash_function, public_key):
+    return hash_function(serialize_public_key(public_key))
+        
 # serialization  
 def serialize_public_key(public_key):
     p1, p2 = public_key

@@ -18,3 +18,16 @@ def xor_subroutine(bytearray1, bytearray2):
     size = min(len(bytearray1), len(bytearray2))    
     for index in range(size):
         bytearray1[index] ^= bytearray2[index]
+        
+def get_permission(prompt):    
+    while True:
+        try:
+            _input = raw_input(prompt).lower()[0]
+        except IndexError:
+            pass
+        else:
+            if _input == 'y':
+                return True
+            elif _input == 'n':
+                return False
+    

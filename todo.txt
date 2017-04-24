@@ -1,5 +1,7 @@
 to do list:            
     - Improve serializer to use less space (persistence.py)
     - improve AEAD (aead.py)
+        - use sponge construction
         - use permuter construction (from crypto.designs.permutation)
+    - improve protocol.py Secure_Connection._secure_data to properly derive encryption/MAC keys
     
