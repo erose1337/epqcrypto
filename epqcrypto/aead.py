@@ -3,9 +3,9 @@
 import hashlib
 import hmac
 from os import urandom 
-import six # python 2/3 compatibility
 
 from persistence import save_data, load_data
+from hashing import hkdf
 
 __all__ = ("InvalidTag", "random_bytes", "psuedorandom_bytes", "encrypt", "decrypt", 
            "Hash_Object", "Key_Derivation_Object", "HKDFExpand", "hkdf_expand",
@@ -16,28 +16,7 @@ _TEST_KEY = "\x00" * 16
 _TEST_MESSAGE = "This is a sweet test message :)"
 
 class InvalidTag(BaseException): pass
-
-# from pride.functions.hkdf
-DEFAULT_HASH = "sha512"
-                    
-def extract(input_keying_material, salt, hash_function=DEFAULT_HASH):
-    hasher = getattr(hashlib, hash_function.lower())
-    return hasher(salt + bytes(input_keying_material)).digest()    
-    
-def expand(psuedorandom_key, length=32, info='', hash_function=DEFAULT_HASH):
-    outputs = [b'']
-    hasher = getattr(hashlib, hash_function)
-    blocks, extra = divmod(length, hasher().digest_size)
-    blocks += 1 if extra else 0
-    for counter in range(blocks):
-        outputs.append(hmac.HMAC(psuedorandom_key, 
-                                 outputs[-1] + info + six.int2byte(counter), 
-                                 hasher).digest())      
-    return b''.join(outputs)[:length]
-    
-def hkdf(input_keying_material, length, info='', salt='', hash_function=DEFAULT_HASH):
-    return expand(extract(input_keying_material, salt), 
-                  length, info, hash_function)                  
+                
                   
 def random_bytes(count):
     """ Generates count cryptographically secure random bytes """

@@ -9,7 +9,7 @@ There currently is no form of PKI - users require some way to obtain the peers p
 import keyexchange
 import witnesssignatures
 import utilities
-from hashing import hmac, hash_function
+from hashing import hmac, hash_function, hkdf
 from aead import encrypt, decrypt
 from persistence import save_data, load_data
 
@@ -24,20 +24,24 @@ class Key_Exchange_Protocol(object):
         self.confirmation_code_size = len(hmac('', ''))              
         
     def initiate_exchange(self, others_public_key):
-        secret = self.secret_a = keyexchange.generate_random_secret(self.secret_size)
+        secret = self.secret_a = keyexchange.generate_random_secret(self.secret_size)                      
         return keyexchange.exchange_key(secret, others_public_key)
         
     def establish_secret(self, ciphertext):                
-        secret_b = keyexchange.recover_key(ciphertext, self.private_key)
-        self.shared_secret = self.hash_function(utilities.integer_to_bytes(self.secret_a ^ secret_b, self.secret_size))
+        secret_b = keyexchange.recover_key(ciphertext, self.private_key)                         
+        keying_material = utilities.integer_to_bytes(self.secret_a ^ secret_b, self.secret_size)              
         del self.secret_a
         
-    def generate_confirmation_code(self):        
-        self.confirmation_code = hmac(self.confirm_connection_string, self.shared_secret)
-        return self.confirmation_code
+        key_material = hkdf(keying_material, 64)
+        self.encryption_key = key_material[:32]
+        self.mac_key = key_material[32:]                        
+        
+        confirmation_code = hmac(self.confirm_connection_string, self.mac_key)
+        self.confirmation_code = confirmation_code
+        return confirmation_code
         
     def confirm_connection(self, confirmation_code):
-        return confirmation_code == self.confirmation_code # change to constant time comparison
+        return utilities.constant_time_comparison(confirmation_code, self.confirmation_code)
     
     @classmethod
     def generate_keypair(cls):
@@ -55,12 +59,9 @@ class Key_Exchange_Protocol(object):
         cb = peer_b.initiate_exchange(peer_a.public_key)
         assert ca != cb
         
-        sa = peer_a.establish_secret(cb)
-        sb = peer_b.establish_secret(ca)
-        assert sa == sb
-        
-        hmac_a = peer_a.generate_confirmation_code()
-        hmac_b = peer_b.generate_confirmation_code()
+        hmac_a = peer_a.establish_secret(cb)
+        hmac_b = peer_b.establish_secret(ca)
+
         assert hmac_a == hmac_b
         
         success_a = peer_a.confirm_connection(hmac_b)
@@ -182,13 +183,11 @@ class Secure_Connection(Basic_Connection):
         protocol = self.key_exchange_protocol            
         if self.validate_public_key(peer_public_key):                   
             _challenge = protocol.initiate_exchange(peer_public_key)            
-            protocol.establish_secret(challenge)
-            code = protocol.generate_confirmation_code()
+            code = protocol.establish_secret(challenge)            
         else:
             _challenge = protocol.initiate_exchange(urandom(32))
-            protocol.establish_secret(urandom(140))
-            code = urandom(protocol.confirmation_code_size)            
-            
+            code = protocol.establish_secret(urandom(140))
+                        
         self.stage = "accepted:confirming"
         response = save_data(code, _challenge)        
         return self.send(response)
@@ -213,8 +212,8 @@ class Secure_Connection(Basic_Connection):
         protocol = self.key_exchange_protocol
         code, _challenge = load_data(packet)
         
-        protocol.establish_secret(_challenge)        
-        self_code = protocol.generate_confirmation_code()
+        self_code = protocol.establish_secret(_challenge)        
+        
         if protocol.confirm_connection(code):            
             _response = self.send(self_code) # must do before setting connection_confirmed to True
             self.stage = "secured"
@@ -257,11 +256,11 @@ class Secure_Connection(Basic_Connection):
             data = self._access_secured_data(data)                    
         return data
         
-    def _secure_data(self, data): # to do: derive keys properly
-        return encrypt(data, self.key_exchange_protocol.shared_secret, self.key_exchange_protocol.shared_secret)
+    def _secure_data(self, data): 
+        return encrypt(data, self.key_exchange_protocol.encryption_key, self.key_exchange_protocol.mac_key)
                   
     def _access_secured_data(self, data):    
-        return decrypt(data, self.key_exchange_protocol.shared_secret, self.key_exchange_protocol.shared_secret)        
+        return decrypt(data, self.key_exchange_protocol.encryption_key, self.key_exchange_protocol.mac_key)        
 
     def request_signature_on_data(self, signers_public_key, data, callback):
         """ usage: self.request_signature_on_data(signers_public_key,
@@ -318,7 +317,7 @@ class Secure_Connection(Basic_Connection):
         confirmation_code = peer_a.initiator_confirm_connection(response)
         #print("\npeer_a -> peer_b: (confirmation_code) {}".format(confirmation_code))
         peer_b.responder_confirm_connection(confirmation_code)        
-        assert peer_a.key_exchange_protocol.shared_secret == peer_b.key_exchange_protocol.shared_secret
+        assert peer_a.key_exchange_protocol.confirmation_code == peer_b.key_exchange_protocol.confirmation_code
         
         packet = peer_a.send("Hi!!")
         #print("\npeer_a -> peer_b: {}".format(packet))

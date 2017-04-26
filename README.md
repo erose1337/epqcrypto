@@ -1,4 +1,4 @@
-Experimental Post-Quantum Cryptography
+epqcrypto
 --------------
 This repository contains an implementation of a secure communications framework that aims to be post-quantum secure.
 The package currently utilizes no external dependencies.

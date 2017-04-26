@@ -1,3 +1,5 @@
+from hmac import compare_digest as constant_time_comparison
+
 def integer_to_bytes(integer, _bytes):
     return bytearray((integer >> (8 * (_bytes - 1 - byte))) & 255 for byte in range(_bytes))
     
@@ -30,4 +32,3 @@ def get_permission(prompt):
                 return True
             elif _input == 'n':
                 return False
-    
