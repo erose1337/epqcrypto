@@ -32,3 +32,10 @@ def get_permission(prompt):
                 return True
             elif _input == 'n':
                 return False
+
+def slide(iterable, x=16):
+    """ Yields x bytes at a time from iterable """
+    slice_count, remainder = divmod(len(iterable), x)
+    for position in range((slice_count + 1 if remainder else slice_count)):
+        _position = position * x
+        yield iterable[_position:_position + x]  
