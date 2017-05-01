@@ -1,4 +1,4 @@
-""" Provides authenticated encryption and decryption functions using only the python standard library and the persistence module.
+""" Provides authenticated encryption and decryption functions using only the python standard library (and modules from epqcrypto)
     Should be replaced by a "real" module with a C backend at some point.  """    
 import hashlib
 import hmac as _hmac
@@ -22,7 +22,7 @@ def encrypt(data, key, nonce, additional_data='', algorithm="sha512"):
     data = bytearray(data)
     key = bytearray(key)
     nonce = bytearray(nonce)    
-    tag = _authenticated_stream_cipher(data, key, nonce, additional_data, algorithm)    
+    tag = _hmac_aead_cipher(data, key, nonce, additional_data, algorithm)    
     
     header = "hmacaead_{}".format(algorithm.lower())    
     return save_data(header, nonce, additional_data, data, tag, algorithm)
@@ -38,7 +38,7 @@ def decrypt(cryptogram, key):
     if _hmacaead != "hmacaead":
         raise ValueError("Invalid algorithm '{}'".format(_hmacaead))
     
-    if _authenticated_stream_cipher_decrypt(data, key, nonce, additional_data, tag, algorithm):
+    if _hmac.compare_digest(tag, _hmac_aead_cipher(data, key, nonce, additional_data, algorithm, reverse=True)):
         return data, additional_data
     else:
         return None, None
@@ -46,7 +46,13 @@ def decrypt(cryptogram, key):
 def _store(data, block, index, block_size):
     data[(index * block_size):((index + 1) * block_size)] = block 
  
-def _authenticated_stream_cipher(data, key, nonce, additional_data='', algorithm="sha512", reverse=False):
+def _hmac_aead_cipher(data, key, nonce, additional_data='', algorithm="sha512", reverse=False):
+    """ ciphertext_0 = plaintext_0 XOR HMAC(key, nonce + additional_data)
+        ciphertext_1 = plaintext_1 XOR HMAC_state.update(key + nonce + ciphertext_0)
+        ciphertext_2 = plaintext_2 XOR HMAC_state.update(key + nonce + ciphertext_1)
+        ...
+        ciphertext_n = plaintext_n XOR HMAC_state.update(key + nonce + ciphertext_n-1)
+        tag = HMAC_state.update(key + nonce + ciphertext_n) """
     hash_input = nonce + additional_data    
     block_size = _HASH_SIZES[algorithm.lower()]
     key_stream_generator = _hmac.HMAC(key, nonce + additional_data, getattr(hashlib, algorithm.lower()))
@@ -59,22 +65,16 @@ def _authenticated_stream_cipher(data, key, nonce, additional_data='', algorithm
         _store(data, block, index, block_size)
         key_stream_generator.update(hash_input)
     key_stream_generator.update(hash_input)
-    return key_stream_generator.digest()
-    
-def _authenticated_stream_cipher_decrypt(data, key, nonce, additional_data, tag, algorithm="sha512"):
-    if tag == _authenticated_stream_cipher(data, key, nonce, additional_data, algorithm, reverse=True):    
-        return True
-    else:
-        return False    
+    return key_stream_generator.digest()     
                               
-def test_authenticated_stream_cipher():
+def test_hmac_aead_cipher():
     message = bytearray("I love you :)" * 10)
     _message = message[:]
     key = "\x00" * 16
     nonce = "\x00" * 16
     data = "Why not!"        
-    tag = _authenticated_stream_cipher(message, key, nonce, data)    
-    assert _authenticated_stream_cipher_decrypt(message, key, nonce, data, tag)        
+    tag = _hmac_aead_cipher(message, key, nonce, data)    
+    assert _hmac_aead_cipher(message, key, nonce, data, reverse=True) == tag
     assert message == _message              
                         
 def test_encrypt_decrypt():
@@ -93,6 +93,6 @@ def test_encrypt_decrypt():
     print "aead encrypt/decrypt unit test complete"
     
 if __name__ == "__main__":    
-    test_authenticated_stream_cipher()
+    test_hmac_aead_cipher()
     test_encrypt_decrypt()    
     
