@@ -5,3 +5,33 @@ to do list:
             - use that to call c libraries natively        
     
     
+# how can we send messages in a decentralized manner
+# assumptions:
+#   - all packets between peers are encrypted and authenticated # (client1 <-secured-> data relay <-secured-> client2)
+#   - all messages between message sender and recipient are encrypted and authenticated # (client1 <-secured---(data-relay)---secured-> client2)
+# goals:
+#   - no single point of failure
+#       - define "failure":
+#           - if the message does not receive intended recipient, then delivery failed
+#       - how can failure occur:
+#           - data relays can become unable to send for arbitrary/benign/malicious reasons (legitimate hardware failure/coordinated DoS/etc)
+#       - how to avoid failure:
+#           - send messages via multiple data relays
+#               - how to choose relays?
+#                   - reliability estimate based on history/network status
+#                   - select nearby nodes for lower latency
+#                   - select nodes over a diverse/wide geographic area to combat network segmentation/isolation
+#                   - periodically randomize/update the list of selected relays to prevent blacklisting
+
+# store sent messages in DHT
+#   - the data is all encrypted anyway
+#   - how to choose keys?
+#       - hash(data):data is nice, but how to send the hash(data) to 
+#   - data remains available on any device
+
+# store messages locally; only use the network as a data transfer service
+#   - does not stop the relay from copying the data
+#       - but the data is encrypted, so it is not beneficial to do so (assuming the key exchange remains unbroken)
+#   - binds data to the device the data is stored on
+
+    

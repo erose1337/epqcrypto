@@ -26,6 +26,7 @@ def save_data(*args):
 
 def load_data(packed_data):
     output = []
+    packed_data = bytes(packed_data) # makes it to where it accepts bytearray without complaining
     while packed_data:
         size, packed_data = packed_data.split(' ', 1)
         size = int(size)
@@ -100,7 +101,7 @@ def unpack_data(packed_data):
         except TypeError:                
             data = {items[0] : items[1]}
     else:            
-        null, item_size, packed_data = packed_data.split(' ', 2)
+        null, item_size, packed_data = packed_data.split(' ', 2)    
         data = _TYPE_RESOLVER[_type](packed_data[:int(item_size)])    
     return data
     
