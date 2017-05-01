@@ -10,51 +10,61 @@ from utilities import slide, xor_subroutine
 
 __all__ = ("encrypt", "decrypt")           
 
-_TEST_KEY = "\x00" * 16
-_TEST_MESSAGE = "This is a sweet test message :)"
 _HASH_SIZES = dict((algorithm, getattr(hashlib, algorithm)().digest_size) for algorithm in hashlib.algorithms_guaranteed)
 
 def encrypt(data, key, nonce, additional_data='', algorithm="sha512"):
+    """ usage: encrypt(data, key, nonce, additional_data='',
+                       algorithm="sha512") => cryptogram
+        
+        Encrypts and authenticates data using key and nonce.
+        Authenticates but does not encrypt additional_data
+        algorithm determines which hash algorithm to use with HMAC
+        data, key, nonce, and additional_data should be bytes or bytearray. """
     data = bytearray(data)
     key = bytearray(key)
     nonce = bytearray(nonce)    
-    tag = authenticated_stream_cipher(data, key, nonce, additional_data, algorithm)    
+    tag = _authenticated_stream_cipher(data, key, nonce, additional_data, algorithm)    
     
     header = "hmacaead_{}".format(algorithm.lower())    
     return save_data(header, nonce, additional_data, data, tag, algorithm)
     
 def decrypt(cryptogram, key):
+    """ usage: decrypt(cryptogram, key) => data, additional_data OR None, None
+    
+        Decrypts cryptogram using key.
+        Returns data and additional data if the data is authenticated successfully.
+        Otherwise, returns None, None."""          
     header, nonce, additional_data, data, tag, algorithm = load_data(cryptogram)
     _hmacaead, algorithm = header.split('_', 1)
     if _hmacaead != "hmacaead":
         raise ValueError("Invalid algorithm '{}'".format(_hmacaead))
     
-    if authenticated_stream_cipher_decrypt(data, key, nonce, additional_data, tag, algorithm):
+    if _authenticated_stream_cipher_decrypt(data, key, nonce, additional_data, tag, algorithm):
         return data, additional_data
     else:
         return None, None
                 
-def store(data, block, index, block_size):
+def _store(data, block, index, block_size):
     data[(index * block_size):((index + 1) * block_size)] = block 
     
-def authenticated_stream_cipher(data, key, nonce, additional_data='', algorithm="sha512"):
+def _authenticated_stream_cipher(data, key, nonce, additional_data='', algorithm="sha512"):
     hash_input = nonce + additional_data    
     block_size = _HASH_SIZES[algorithm.lower()]
     for index, block in enumerate(slide(data, block_size)):
         key_stream = bytearray(hmac(key, hash_input, algorithm))
         xor_subroutine(block, key_stream)
-        store(data, block, index, block_size)
+        _store(data, block, index, block_size)
         hash_input = nonce + block
     return hmac(key, hash_input, algorithm)
  
-def authenticated_stream_cipher_decrypt(data, key, nonce, additional_data, tag, algorithm="sha512"):
+def _authenticated_stream_cipher_decrypt(data, key, nonce, additional_data, tag, algorithm="sha512"):
     hash_input = nonce + additional_data    
     block_size = _HASH_SIZES[algorithm.lower()]
     for index, block in enumerate(slide(data, block_size)):
         key_stream = bytearray(hmac(key, hash_input, algorithm))
         hash_input = nonce + block
         xor_subroutine(block, key_stream)
-        store(data, block, index, block_size)
+        _store(data, block, index, block_size)
     if _hmac.compare_digest(hmac(key, hash_input, algorithm), tag):
         return True
     else:
@@ -66,8 +76,8 @@ def test_authenticated_stream_cipher():
     key = "\x00" * 16
     nonce = "\x00" * 16
     data = "Why not!"        
-    tag = authenticated_stream_cipher(message, key, nonce, data)    
-    assert authenticated_stream_cipher_decrypt(message, key, nonce, data, tag)        
+    tag = _authenticated_stream_cipher(message, key, nonce, data)    
+    assert _authenticated_stream_cipher_decrypt(message, key, nonce, data, tag)        
     assert message == _message              
                         
 def test_encrypt_decrypt():
