@@ -4,7 +4,6 @@ import hashlib
 import hmac as _hmac
 
 from persistence import save_data, load_data
-from hashing import hmac
 from utilities import slide, xor_subroutine
 
 __all__ = ("encrypt", "decrypt")           
@@ -47,21 +46,21 @@ def _store(data, block, index, block_size):
     data[(index * block_size):((index + 1) * block_size)] = block 
  
 def _hmac_aead_cipher(data, key, nonce, additional_data='', algorithm="sha512", reverse=False):
-    """ ciphertext_0 = plaintext_0 XOR HMAC(key, nonce + additional_data)
-        ciphertext_1 = plaintext_1 XOR HMAC_state.update(key + nonce + ciphertext_0)
-        ciphertext_2 = plaintext_2 XOR HMAC_state.update(key + nonce + ciphertext_1)
+    """ ciphertext_0 = plaintext_0 XOR HMAC(key, nonce + additional_data).digest()
+        ciphertext_1 = plaintext_1 XOR HMAC_state.update(nonce + ciphertext_0).digest()
+        ciphertext_2 = plaintext_2 XOR HMAC_state.update(nonce + ciphertext_1).digest()
         ...
-        ciphertext_n = plaintext_n XOR HMAC_state.update(key + nonce + ciphertext_n-1)
-        tag = HMAC_state.update(key + nonce + ciphertext_n) """
+        ciphertext_n = plaintext_n XOR HMAC_state.update(nonce + ciphertext_n-1).digest()
+        tag = HMAC_state.update(nonce + ciphertext_n).digest() """
     hash_input = nonce + additional_data    
     block_size = _HASH_SIZES[algorithm.lower()]
     key_stream_generator = _hmac.HMAC(key, nonce + additional_data, getattr(hashlib, algorithm.lower()))
     for index, block in enumerate(slide(data, block_size)):  
         if reverse:
-            hash_input = key + nonce + block
+            hash_input = nonce + block
         xor_subroutine(block, bytearray(key_stream_generator.digest()))
         if not reverse:
-            hash_input = key + nonce + block
+            hash_input = nonce + block
         _store(data, block, index, block_size)
         key_stream_generator.update(hash_input)
     key_stream_generator.update(hash_input)
@@ -76,7 +75,7 @@ def test_hmac_aead_cipher():
     tag = _hmac_aead_cipher(message, key, nonce, data)    
     assert _hmac_aead_cipher(message, key, nonce, data, reverse=True) == tag
     assert message == _message              
-                        
+                     
 def test_encrypt_decrypt():
     key = "\x00" * 16
     nonce = "\x00" * 16
