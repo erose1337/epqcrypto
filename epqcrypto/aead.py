@@ -24,7 +24,7 @@ def encrypt(data, key, nonce, additional_data='', algorithm="sha512"):
     tag = _hmac_aead_cipher(data, key, nonce, additional_data, algorithm)    
     
     header = "hmacaead_{}".format(algorithm.lower())    
-    return save_data(header, nonce, additional_data, data, tag, algorithm)
+    return save_data(header, nonce, additional_data, data, tag)
     
 def decrypt(cryptogram, key):
     """ usage: decrypt(cryptogram, key) => data, additional_data OR None, None
@@ -32,7 +32,7 @@ def decrypt(cryptogram, key):
         Decrypts cryptogram using key.
         Returns data and additional data if the data is authenticated successfully.
         Otherwise, returns None, None."""          
-    header, nonce, additional_data, data, tag, algorithm = load_data(cryptogram)
+    header, nonce, additional_data, data, tag = load_data(cryptogram)
     _hmacaead, algorithm = header.split('_', 1)
     if _hmacaead != "hmacaead":
         raise ValueError("Invalid algorithm '{}'".format(_hmacaead))
