@@ -1,7 +1,39 @@
 to do list:            
     - Improve serializer to use less space (persistence.py)
     - improve AEAD (aead.py)
-        - write python extension module for calling C functions
+        - write python module for calling C functions using ctypes
             - use that to call c libraries natively        
+    
+    
+# the most generic cipher is a gigantic fisher yates shuffle of all n-bit blocks
+# for example, for a 4 bit cipher, there are 2 ** 4 = 16 different possible message blocks
+# encryption would be as follows:
+#   prepare a list containing each possible message block (for example: [0, 1, 2, ..., 14, 15])
+#   shuffle the list according to the key (a psuedo random permutation of the list)
+#   find your message in the list and output its location as the ciphertext
+#
+# decryption would be:
+#   perform the list shuffle again
+#   check for the index that the ciphertext block is moved back to
+#   output that block/index as the plaintext
+
+# or
+# encryption:
+#   apply a one-to-one first-preimage resistant function to the message to produce an ciphertext block
+
+# decryption:
+#   apply the inverse of function used during encryption
+
+
+
+# keyed, one-to-one, first preimage resistant function
+#   - second preimages and collisions not possible, because it is one-to-one/not compressing
+# hard to find input, given output
+# hard to find key, given only output
+
+# find some other key that happens to produce the inverse mapping to the first key
+# find some function that allows to find such a key faster then brute force
+#   - but only if you have certain information
+
     
     

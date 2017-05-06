@@ -8,7 +8,10 @@
     The private key decryption function is the decryption circuit from the secret key cipher.
     This results in a shared secret for both parties, because:
         
-    `(pb1 * r1) + (pb2 * r2) + e == (0 * r1) + (0 * r2) + e == e`
+    `c == (pb1 * r1) + (pb2 * r2) + e == (0 * r1) + (0 * r2) + e == e`
+    
+    To break: Given c, pb1 and pb2, the goal is to recover e
+        - pb1 and pb2 are similarly sized; (c % pb1) % pb2 does not work as it does in secretkey
     
     to-do: Fix public key randomization"""             
 from math import log  

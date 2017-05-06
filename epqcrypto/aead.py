@@ -4,14 +4,14 @@ import hashlib
 import hmac as _hmac
 
 from persistence import save_data, load_data
-from utilities import slide, xor_subroutine
+from utilities import slide, xor_subroutine, random_bytes
 
 __all__ = ("encrypt", "decrypt")           
 
 _HASH_SIZES = dict((algorithm, getattr(hashlib, algorithm)().digest_size) for algorithm in hashlib.algorithms_guaranteed)
 
-def encrypt(data, key, nonce, additional_data='', algorithm="sha512"):
-    """ usage: encrypt(data, key, nonce, additional_data='',
+def encrypt(data, key, nonce=None, additional_data='', algorithm="sha512", nonce_size=32):
+    """ usage: encrypt(data, key, nonce=None, additional_data='',
                        algorithm="sha512") => cryptogram
         
         Encrypts and authenticates data using key and nonce.
@@ -20,7 +20,7 @@ def encrypt(data, key, nonce, additional_data='', algorithm="sha512"):
         data, key, nonce, and additional_data should be bytes or bytearray. """
     data = bytearray(data)
     key = bytearray(key)
-    nonce = bytearray(nonce)    
+    nonce = bytearray(nonce if nonce is not None else random_bytes(32))
     tag = _hmac_aead_cipher(data, key, nonce, additional_data, algorithm)    
     
     header = "hmacaead_{}".format(algorithm.lower())    

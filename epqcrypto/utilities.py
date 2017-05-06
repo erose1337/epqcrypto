@@ -40,3 +40,10 @@ def slide(iterable, x=16):
     for position in range((slice_count + 1 if remainder else slice_count)):
         _position = position * x
         yield iterable[_position:_position + x]  
+            
+def random_integer(size_in_bytes):
+    """ usage: random_integer(size_in_bytes) => random integer
+    
+        Returns a random integer of the size specified, in bytes. """
+    return bytes_to_integer(bytearray(random_bytes(size_in_bytes)))
+    

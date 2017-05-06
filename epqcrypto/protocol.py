@@ -5,9 +5,21 @@ The Secure_Connection object offers send and receive methods, which handle the r
 Until a key exchange occurs, these methods provide only replay attack protection.
 After a key exchange occurs, the send and receive methods apply authenticated encryption to transmitted data, before applying replay attack protection.
 
-There currently is no form of PKI - users require some way to obtain the peers public key or public key fingerprint, and the software does not help with this."""
+There currently is no form of PKI - users require some way to obtain the peers public key or public key fingerprint, and the software does not help with this.
+
+Some kind of forward secrecy in 1 round trip:
+
+ciphertext1 := encrypt(secret1, public_keyb) a -----ephemeral public key -- public keya ---ciphertext1 ---> b obtain secret1 from ciphertext
+                                             a <------- ciphertext2, ciphertext3, confirmation code ------  b ciphertext2: encrypt(secret2, public keya); 
+                                                                                                              ciphertext3 := encrypt(secret3, ephemeral public key)
+                                                                                                              confirmation code := hmac(string, session_secret)
+ session secret: hkdf(secret1 XOR secret2 XOR secret3)
+ if pubb and puba are compromised:
+   adversary obtains secret1 by decrypting with private key a
+   adversary obtains secret2 by decrypting with private key b
+   adversary cannot obtain secret3 because they do not have the ephemeral private key
+       - adversary cannot obtain session secret"""
 import keyexchange
-import witnesssignatures
 import utilities
 from hashing import hmac, hash_function, hkdf
 from aead import encrypt, decrypt
@@ -24,24 +36,42 @@ class Key_Exchange_Protocol(object):
         self.confirmation_code_size = len(hmac('', ''))              
         
     def initiate_exchange(self, others_public_key):
-        secret = self.secret_a = keyexchange.generate_random_secret(self.secret_size)                      
-        return keyexchange.exchange_key(secret, others_public_key)
+        secret = self.secret1 = keyexchange.generate_random_secret(self.secret_size)                      
+        ephemeral_public_key, self.ephemeral_private_key = keyexchange.generate_keypair()
+        return keyexchange.exchange_key(secret, others_public_key), self.public_key, ephemeral_public_key
         
-    def establish_secret(self, ciphertext):                
-        secret_b = keyexchange.recover_key(ciphertext, self.private_key)                         
-        keying_material = utilities.integer_to_bytes(self.secret_a ^ secret_b, self.secret_size)              
-        del self.secret_a
+    def responder_establish_secret(self, ciphertext, public_key, ephemeral_public_key):       
+        secret1 = keyexchange.recover_key(ciphertext, self.private_key)
+        secret2 = keyexchange.generate_random_secret(self.secret_size)
+        secret3 = keyexchange.generate_random_secret(self.secret_size)
+                       
+        keying_material = utilities.integer_to_bytes(secret1 ^ secret2 ^ secret3, self.secret_size)              
+        confirmation_code = self.derive_keys(keying_material)
         
+        ciphertext2 = keyexchange.exchange_key(secret2, public_key)
+        ciphertext3 = keyexchange.exchange_key(secret3, ephemeral_public_key)
+        return ciphertext2, ciphertext3, confirmation_code        
+    
+    def initiator_establish_secret(self, ciphertext2, ciphertext3, confirmation_code):
+        secret2 = keyexchange.recover_key(ciphertext2, self.private_key)
+        secret3 = keyexchange.recover_key(ciphertext3, self.ephemeral_private_key)
+        del self.ephemeral_private_key
+        
+        keying_material = utilities.integer_to_bytes(self.secret1 ^ secret2 ^ secret3, self.secret_size)
+        del self.secret1
+        _confirmation_code = self.derive_keys(keying_material)
+        return self.confirm_connection(_confirmation_code, confirmation_code)
+                
+    def derive_keys(self, keying_material):
         key_material = hkdf(keying_material, 64)
         self.encryption_key = key_material[:32]
         self.mac_key = key_material[32:]                        
         
         confirmation_code = hmac(self.confirm_connection_string, self.mac_key)
-        self.confirmation_code = confirmation_code
         return confirmation_code
         
-    def confirm_connection(self, confirmation_code):
-        return utilities.constant_time_comparison(confirmation_code, self.confirmation_code)
+    def confirm_connection(self, code1, code2):
+        return utilities.constant_time_comparison(code1, code2)
     
     @classmethod
     def generate_keypair(cls):
@@ -55,18 +85,10 @@ class Key_Exchange_Protocol(object):
         peer_a = cls(pub1, priv1)
         peer_b = cls(pub2, priv2)
         
-        ca = peer_a.initiate_exchange(peer_b.public_key)
-        cb = peer_b.initiate_exchange(peer_a.public_key)
-        assert ca != cb
-        
-        hmac_a = peer_a.establish_secret(cb)
-        hmac_b = peer_b.establish_secret(ca)
-
-        assert hmac_a == hmac_b
-        
-        success_a = peer_a.confirm_connection(hmac_b)
-        success_b = peer_b.confirm_connection(hmac_a)
-        assert success_a and (success_a == success_b)
+        c1, pub_a, ephem_pub_a = peer_a.initiate_exchange(peer_b.public_key)
+        c2, c3, confirmation_code = peer_b.responder_establish_secret(c1, pub_a, ephem_pub_a)
+        success = peer_a.initiator_establish_secret(c2, c3, confirmation_code)                
+        assert success
     
          
 class Replay_Attack_Countermeasure(object):
@@ -163,10 +185,8 @@ class Secure_Connection(Basic_Connection):
             Create a packet for initializing a secure connection with the desired peer.
             The packet needs no modification, and can be sent as-is via the IO method of choice (i.e. socket.send)
             The receiving peer should supply the packet to the accept method. """        
-        assert self.stage == "unconnected"
-        protocol = self.key_exchange_protocol
-        public_key = keyexchange.serialize_public_key(protocol.public_key)        
-        packet = save_data(public_key, protocol.initiate_exchange(peer_public_key))  
+        assert self.stage == "unconnected"        
+        packet = save_data(self.key_exchange_protocol.initiate_exchange(peer_public_key))
         self.stage = "connecting"
         return self.send(packet)
         
@@ -175,22 +195,13 @@ class Secure_Connection(Basic_Connection):
             
             Initializes a secure connection with the remote peer.
             Returns a response packet, which the remote peer should supply to the initiator_confirm_connection method. """        
-        assert self.stage == "unconnected"
-        packet = self.receive(packet)
-        serialized_key, challenge = load_data(packet)        
-        peer_public_key = keyexchange.deserialize_public_key(serialized_key)
-            
-        protocol = self.key_exchange_protocol            
-        if self.validate_public_key(peer_public_key):                   
-            _challenge = protocol.initiate_exchange(peer_public_key)            
-            code = protocol.establish_secret(challenge)            
-        else:
-            _challenge = protocol.initiate_exchange(urandom(32))
-            code = protocol.establish_secret(urandom(140))
-                        
+        assert self.stage == "unconnected"        
+        challenge, public_key, ephemeral_public_key = load_data(self.receive(packet))
+        response = save_data(self.key_exchange_protocol.responder_establish_secret(challenge, public_key, ephemeral_public_key))
         self.stage = "accepted:confirming"
-        response = save_data(code, _challenge)        
-        return self.send(response)
+        response = self.send(response)
+        self.connection_confirmed = True
+        return response
     
     def validate_public_key(self, peer_public_key):    
         fingerprint = keyexchange.hash_public_key(self.key_exchange_protocol.hash_function, peer_public_key)        
@@ -210,41 +221,24 @@ class Secure_Connection(Basic_Connection):
         assert self.stage == "connecting"
         packet = self.receive(packet)
         protocol = self.key_exchange_protocol
-        code, _challenge = load_data(packet)
-        
-        self_code = protocol.establish_secret(_challenge)        
-        
-        if protocol.confirm_connection(code):            
-            _response = self.send(self_code) # must do before setting connection_confirmed to True
+        ciphertext2, ciphertext3, confirmation_code = load_data(packet)
+        if protocol.initiator_establish_secret(ciphertext2, ciphertext3, confirmation_code):                      
+            #_response = self.send(self_code) # must do before setting connection_confirmed to True
             self.stage = "secured"
             self.connection_confirmed = True
-            return _response
+            return True
         else:
             raise ValueError("Invalid confirmation code")
-            
-    def responder_confirm_connection(self, packet):  
-        """ usage: self.responder_confirm_connection(packet) => None
-            
-            Confirms a successful connection with the peer.
-            Raises ValueError when the connection fails.
-            Otherwise, sets the self.connection_confirmed flag to True. """
-        assert self.stage == "accepted:confirming"
-        confirmation_code = self.receive(packet)
-        if self.key_exchange_protocol.confirm_connection(confirmation_code):
-            self.stage = "secured"
-            self.connection_confirmed = True
-        else:
-            raise ValueError("Connection failed")
-            
+                        
     def send(self, data):  
         """ usage: self.send(data) => packet
         
             Returns a secured packet.           
             The returned packet should be supplied to the remote peers receive method.
             If the connection_confirmed flag is set, then the supplied data will be secured (confidentiality/authenticity/integrity)
-            Provides replay attack prevention (even when connection_confirmed is not yet True). """
+            Provides replay attack prevention (even when connection_confirmed is not yet True). """        
         if self.connection_confirmed:
-            data = self._secure_data(data)
+            data = self._secure_data(data)        
         return super(Secure_Connection, self).send(data)
         
     def receive(self, packet):       
@@ -253,54 +247,14 @@ class Secure_Connection(Basic_Connection):
             Removes the security protections from packet that were added by the send method. """
         data = super(Secure_Connection, self).receive(packet)
         if self.connection_confirmed:            
-            data = self._access_secured_data(data)                    
+            data, _ = self._access_secured_data(data)                                
         return data
         
     def _secure_data(self, data): 
-        return encrypt(data, self.key_exchange_protocol.encryption_key, self.key_exchange_protocol.mac_key)
-                  
-    def _access_secured_data(self, data):    
-        return decrypt(data, self.key_exchange_protocol.encryption_key, self.key_exchange_protocol.mac_key)        
-
-    def request_signature_on_data(self, signers_public_key, data, callback):
-        """ usage: self.request_signature_on_data(signers_public_key,
-                                                  data, callback) => packet
-                                                  
-            Creates a request for the owner of signers_public_key to sign the supplied data.
-            The callback is applied upon verification of the signature:
-                - It should accept a single argument, which is a boolean True/False
-                    - The argument will be True if the signature is valid, or False otherwise
-            The signer should supply the packet to the sign_requested_data method. """
-        signature_request, validation_key, tag = witnesssignatures.generate_signature_request_on_data(signers_public_key, data)
-        packet = save_data(signature_request, tag, data)        
-        self.pending_signature_requests[tag] = (data, validation_key, callback)
-        return self.send(packet)   
-                
-    def sign_requested_data(self, packet, decision_function):                        
-        """ usage: self.sign_requested_data(packet, decision_function) => response
-        
-            Signs the requested data, if the decision_function determines that the data should be signed.
-            The decision function will receive the data as an argument, and should output a boolean True/False value for whether or not the data should be signed.
-            If the data is not signed, then signature verification will simply fail. 
-            The returned packet should be supplied to the validate_signature method of the peer. """
-        packet = self.receive(packet)
-        signature_request, tag, data = load_data(packet)           
-        if decision_function(data):
-            signature, signing_key = witnesssignatures.sign_requested_data(data, signature_request, self.signature_private_key, tag)
-        else:
-            signature, signing_key = '', ''
-        packet = save_data(signature, signing_key, tag)
-        return self.send(packet)
-        
-    def validate_signature(self, packet):
-        """ usage: self.validate_signature(packet) => callback return value
-        
-            Verifies the signature on the requested data, and passes the result of the verification to the callback that was supplied when the signature was requested.
-            The return value of this function is determined by the supplied callback. """
-        packet = self.receive(packet)
-        signature, signing_key, tag = load_data(packet)
-        data, validation_key, callback = self.pending_signature_requests.pop(tag)
-        return callback(witnesssignatures.verify(data, signature, signing_key, validation_key))
+        return encrypt(data, self.key_exchange_protocol.encryption_key)
+                                                                      
+    def _access_secured_data(self, data):                             
+        return decrypt(data, self.key_exchange_protocol.encryption_key)        
                                     
     @classmethod
     def unit_test(cls):
@@ -314,20 +268,18 @@ class Secure_Connection(Basic_Connection):
         #print("peer_a -> peer_b: {}".format(packet))
         response = peer_b.accept(packet)
         #print("\npeer_b -> peer_a: {}".format(response))
-        confirmation_code = peer_a.initiator_confirm_connection(response)
+        success = peer_a.initiator_confirm_connection(response)
         #print("\npeer_a -> peer_b: (confirmation_code) {}".format(confirmation_code))
-        peer_b.responder_confirm_connection(confirmation_code)        
-        assert peer_a.key_exchange_protocol.confirmation_code == peer_b.key_exchange_protocol.confirmation_code
+        assert success
+        #peer_b.responder_confirm_connection(confirmation_code)        
+        #assert peer_a.key_exchange_protocol.confirmation_code == peer_b.key_exchange_protocol.confirmation_code
         
         packet = peer_a.send("Hi!!")
         #print("\npeer_a -> peer_b: {}".format(packet))
-        assert peer_b.receive(packet) == "Hi!!"
-        def callback(result):
-            assert result
+        _received = peer_b.receive(packet)
         
-        packet = peer_a.request_signature_on_data(peer_b.signature_public_key, "peer_b", callback)
-        response = peer_b.sign_requested_data(packet, lambda packet: True)
-        peer_a.validate_signature(response)
+        assert _received == "Hi!!", _received
+        print "Secure_Connection unit test passed"
         
 if __name__ == "__main__":
     Key_Exchange_Protocol.unit_test()   

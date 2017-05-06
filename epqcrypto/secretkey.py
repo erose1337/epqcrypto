@@ -13,25 +13,13 @@ from os import urandom
 from math import log
 from fractions import gcd
 
+from utilities import random_integer
+
 __all__ = ["generate_key", "encrypt", "decrypt"]
 
 P1_SIZE = 110
 P2_SIZE = 36
 R_SIZE = 32
-
-# utilities
-def _bytes_to_integer(data):
-    output = 0    
-    size = len(data)
-    for index in range(size):
-        output |= data[index] << (8 * (size - 1 - index))
-    return output
-    
-def random_integer(size_in_bytes):
-    """ usage: random_integer(size_in_bytes) => random integer
-    
-        Returns a random integer of the size specified, in bytes. """
-    return _bytes_to_integer(bytearray(urandom(size_in_bytes)))
     
 # algorithm    
 def generate_key(p1_size=P1_SIZE, p2_size=P2_SIZE):
@@ -39,6 +27,7 @@ def generate_key(p1_size=P1_SIZE, p2_size=P2_SIZE):
                             p2_size=P2_SIZE) => secret_key
                             
         Returns two random integers, suitable for use as a secret key for the cipher. """
+    assert p1_size / p2_size >= 3
     p1, p2 = random_integer(p1_size), random_integer(p2_size)    
     while gcd(p1, p2) != 1:
         p2 = random_integer(p2_size)
