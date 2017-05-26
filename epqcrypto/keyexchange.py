@@ -1,80 +1,50 @@
-""" Python implementation of a secret key based key exchange algorithm.
-    A public key consists of two homomorphic encryptions of 0, of roughly similar size in bits.
-    The public key encryption method:
-        - multiply each encryption of 0 by a random amount
-        - add the two products together
-        - add a randomly generated value to the sum
-    The randomly generated value is the shared secret.
-    The private key decryption function is the decryption circuit from the secret key cipher.
-    This results in a shared secret for both parties, because:
-        
-    `c == (pb1 * r1) + (pb2 * r2) + e == (0 * r1) + (0 * r2) + e == e`
-    
-    To break: Given c, pb1 and pb2, the goal is to recover e
-        - pb1 and pb2 are similarly sized; (c % pb1) % pb2 does not work as it does in secretkey
-    
-    to-do: Fix public key randomization"""             
-from math import log  
-from fractions import gcd
-
 import secretkey
+from utilities import random_integer
+from persistence import save_data, load_data
 
-__all__ = ["generate_random_secret", "generate_keypair", "randomize_public_key", "generate_private_key", "generate_public_key",
-           "exchange_key", "recover_key",]
-           
-SECRET_SIZE = 33 
-
-def generate_random_secret(size_in_bytes=SECRET_SIZE):
-    return secretkey.random_integer(size_in_bytes)    
+def generate_private_key(keygen_function=secretkey.generate_key):
+    """ usage: generate_private_key(keygen_function=secretkey.generate_key) => private_key
     
-def generate_private_key(key_generation_function=secretkey.generate_key):
-    """ usage: generate_private_key(key_generation_function=secretkey.generate_key) => private_key
-    
-        Generates a private key, which is the key for a secret key homomorphic cipher. """
-    return key_generation_function()
-    
-def generate_public_key(private_key, encryption_function=secretkey.encrypt):
-    """ usage: generate_public_key(private_key, 
+        Generates a private key, which is the key for a secret key homomorphic cipher. """                           
+    return keygen_function(66, 66, 133)
+        
+def generate_public_key(private_key, encryption_function=secretkey.encrypt):    
+    """ usage: generate_public_key(private_key,
                                    encryption_function=secretkey.encrypt) => public_key
                                    
-        Returns two encryptions of 0, suitable for use as a public key. """
-    pb2 = encryption_function(0, private_key)
-    pb1 = encryption_function(0, private_key)
-    while gcd(pb1, pb2) != 1:     
-        pb1 = encryption_function(0, private_key)            
-    return pb1, pb2
+        Returns two encryptions of 1, suitable for use as a public key. """
+    public_key = (encryption_function(1, private_key),
+                  encryption_function(1, private_key))
+    return public_key
     
-def generate_keypair():
+def generate_keypair(keygen_private=generate_private_key,
+                     keygen_public=generate_public_key):
     """ usage: generate_keypair(): => public_key, private_key
     
-        Generates a public key and a private key.
-        A public key consists of 2 different numbers, which are both homomorphic encryptions of 0.
-        The nature of the private key depends on the secret key cipher that is used to instantiate the scheme. """
-    private_key = generate_private_key()    
-    public_key = generate_public_key(private_key)    
+        Generates a public key and a private key. """                     
+    private_key = keygen_private()
+    public_key = keygen_public(private_key)
     return public_key, private_key
     
-def exchange_key(random_secret, public_key, r_size=SECRET_SIZE): 
-    """ usage: exchange_key(random_secret, public_key,
-                            r_size=SECRET_SIZE) => encrypted random_secret
-                            
-        Creates a ciphertext from random_secret that only the holder of the private key may recover the plaintext from.
-        Ciphertexts are of the form p1q1 + p2q2 + e. """            
-    p1, p2 = public_key
-    assert p1 != 0
-    assert p2 != 0
-    q1, q2 = secretkey.random_integer(r_size), secretkey.random_integer(r_size) 
-    p1q1 = (p1 * q1)    
-    p2q2 = (p2 * q2)              
-    return p1q1 + p2q2 + random_secret
-       
-def recover_key(ciphertext, private_key, decryption_function=secretkey.decrypt):    
-    """ usage: recover_key(ciphertext, private_key, 
-                           decryption_function=secretkey.decrypt) => random_secret
-                           
-        Returns the random_secret that was encrypted using the public key. """
-    return decryption_function(ciphertext, private_key) #>> 8 # get rid of the lower bits, which could leak due to common factors in q1 and q2    
+def exchange_key(public_key, r_size=32):
+    """ usage: exchange_key(public_key, r_size=32) => ciphertext, shared_secret
     
+        Generates a ciphertext and shared secret.
+        The ciphertext is delivered to the holder of the private key.
+        shared_secret is the value they will obtain upon decrypting the ciphertext. """
+    p1, p2 = public_key
+    q1, q2 = random_integer(r_size), random_integer(r_size)
+    ciphertext = (p1 * q1) + (p2 * q2)
+    shared_secret = q1 + q2       
+    return ciphertext, shared_secret
+    
+def recover_key(ciphertext, private_key, decryption_function=secretkey.decrypt):
+    """ usage: recover_key(ciphertext, private_key,
+                           decryption_function=secretkey.decrypt) => shared_secret
+                           
+        Returns a shared secret. """
+    return decryption_function(ciphertext, private_key)
+        
 def _randomize_key(pb1, pb2, r=lambda size=8: secretkey.random_integer(size)):
     new_key = lambda: (pb1 * r()) - (pb2 * r(7)) + (pb1 * r()) - (pb2 * r(7))    
     key = new_key()    
@@ -89,6 +59,7 @@ def randomize_public_key(public_key):
     
         Returns a randomized public key. 
         The resultant public key is still linked with the same private key, but it should not be possible to associate the new public key with the original one. """ 
+    raise NotImplementedError()
     pb1, pb2 = public_key
     new1 = _randomize_key(pb1, pb2)
     new2 = _randomize_key(pb1, pb2)
@@ -101,16 +72,10 @@ def hash_public_key(hash_function, public_key):
         
 # serialization  
 def serialize_public_key(public_key):
-    p1, p2 = public_key
-    p1, p2 = str(p1), str(p2)
-    return str(len(p1)) + ' ' + str(len(p2)) + ' ' + p1 + p2
+    return save_data(public_key)
     
-def deserialize_public_key(serialized_public_key):    
-    p1_size, p2_size, keys = serialized_public_key.split(' ', 2)
-    p1_size, p2_size = int(p1_size), int(p2_size)
-    p1 = keys[:p1_size]
-    p2 = keys[-p2_size:]
-    return int(p1), int(p2)
+def deserialize_public_key(serialized_public_key):
+    return load_data(serialized_public_key)
     
 def test_serialized_public_key_deserialize_public_key():
     public_key, _ = generate_keypair()
@@ -118,83 +83,30 @@ def test_serialized_public_key_deserialize_public_key():
     _public_key = deserialize_public_key(serialized)
     assert _public_key == public_key, (_public_key, public_key)
     
-def test_exchange_key_recover_key():    
-    public_key, private_key = generate_keypair()       
-    print("Public key size : {} + {} = {}".format(log(public_key[0], 2), log(public_key[1], 2), sum(log(item, 2) for item in public_key)))
-    print("Private key size: {}".format(sum(log(item, 2) for item in private_key)))        
-    ciphertext_size = []    
-    for counter in range(8096):
-        message = secretkey.random_integer(33)        
-        _public_key = randomize_public_key(public_key)
-        ciphertext = exchange_key(message, _public_key)    
-        plaintext = recover_key(ciphertext, private_key)
-        assert plaintext == message, (counter, plaintext, message)
-        ciphertext_size.append(log(ciphertext, 2))               
-    print("Transported secret size : {}".format(sum(ciphertext_size) / float(len(ciphertext_size))))    
-    print("key exchange exchange_key/recover_key unit test passed")
+def test_exchange_key_recover_key():
+    print("Generating keypair...")
+    public_key, private_key = generate_keypair()
+    print("...done.")
+    for count in range(1024):             
+        ciphertext, secret = exchange_key(public_key)
+        _secret = recover_key(ciphertext, private_key)
+        assert _secret == secret, (_secret, secret)
     
-def test_exchange_key_time():
-    from timeit import default_timer as timer
-    print("Calculating time to generate keypair... ")
-    before = timer()
-    for number in range(1024):
-        public_key, private_key = generate_keypair()
-    after = timer()
-    print("Time taken to generate keypair: {}".format((after - before) / number))    
-        
-    print("Calculating time to exchange and recover keys... ")
-    message = 1
-    before = timer()
-    for number in range(1024 * 8):                       
-        ciphertext = exchange_key(message, public_key)
-        key = recover_key(ciphertext, private_key)
-    after = timer()
-    ciphertext_size = len(format(ciphertext, 'b'))
-    print("Time taken to exchange {} keys: {}".format(number + 1, after - before))
-
-def test_break():
-    # p1q1 + p2q2 + e == p1q1 + (p1q3 + _e) + e
-    # p1q1 + p1q3 + _e + e
-    # mod p1 == _e + e
-    # log(_e) < log(p1)
-    # is log(_e) < log(q1) + log(q2) ? if so, then searching for _e is faster then searching q1/q2
-        
-    # p1q1 + p2q2 == p1q1 + p1q3 if (p2q2 == p1q3); 
-    # if gcd(p1, p2) != 1, p1q1 + p2q2 == gcd(p1, p2)q1 + gcd(p1, 2)q3
-    p1 = 35
-    p2 = 33
-    e = 5
-    r1 = 8
-    r2 = 16   
-    c =  ((p1 * r1) + (p2 * r2)) + e
-    _c = c % p1
-    _e = ((p1 * r1) + (p2 * r2)) % p1
+    ciphertext1, secret1 = exchange_key(public_key)
+    ciphertext2, secret2 = exchange_key(public_key)
+    ciphertext3 = ciphertext1 + ciphertext2
+    assert recover_key(ciphertext3, private_key) == secret1 + secret2
+    assert recover_key(ciphertext3 + (public_key[0] * 1), private_key) == secret1 + 1 + secret2
     
-    assert _c != e
-    assert _c == e + _e
-    
-    __c = c - _c
-    # __c == p1q1 + p1q3
-    assert __c % p1 == 0, (__c, __c % p1, e)
-    
-    _gcd = gcd(p1, p2)
-    assert c % _gcd == (e % _gcd), (c, gcd, e, c % gcd, e % gcd)
-    #print c, e, _gcd, c % _gcd, e % _gcd
-    
-    public, private = generate_keypair()
-    e = generate_random_secret()
-    ciphertext = exchange_key(e, public)
-    # p1q1 + p2q2 + e == p1q1 + p1q3 + _e + e
-    # p1q1 + p1q3 + _e + e mod p1 == _e + e    
-    _e = ciphertext % public[0]    
-    print("Estimated time required to guess e : {}".format(log(e, 2)))
-    print("Estimated time required to guess _e: {}".format(log(_e - e, 2)))
-    print("Estimated time required to guess q : {}".format(log(secretkey.random_integer(SECRET_SIZE), 2)))
+    from crypto.utilities import size_in_bits
+    public_sizes = [size_in_bits(item) for item in public_key]
+    private_sizes = [size_in_bits(item) for item in private_key]
+    print("Public key size: p1: {}; p2: {}; Total: {}".format(*public_sizes + [sum(public_sizes)]))
+    print("Private key size: p: {}; k: {}; n: {}; Total: {}".format(*private_sizes + [sum(private_sizes)]))
+    print("Ciphertext size : {}".format(size_in_bits(ciphertext3)))
+    print("(sizes are in bits)")
     
 if __name__ == "__main__":
-    test_serialized_public_key_deserialize_public_key()
-    test_exchange_key_recover_key()
-    test_exchange_key_time()
-    test_break()
-    
+    test_exchange_key_recover_key()                    
+    test_serialized_public_key_deserialize_public_key()    
     

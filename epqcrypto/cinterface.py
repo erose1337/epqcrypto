@@ -7,7 +7,6 @@ def get_function(library_name, function_name, argtypes, restype=ctypes.c_int, dl
     function.restype = restype
     return function
     
-# By default functions are assumed to return the C int type. Other return types can be specified by setting the restype attribute of the function object.
 def test_get_function():    
     def __sum(numbers):
         length = len(numbers)

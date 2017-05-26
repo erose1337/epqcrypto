@@ -1,75 +1,60 @@
-""" Effectively equivalent/very similar to the DoubleMod construction.    
-    Keygen:
-        p2_size := p1_size / 3
-        p1, p2 = random_integer(p1_size), random_integer(p2_size)
+""" Keygen:
+        random integers p, k, n such that modular_inverse(p, n) exists
     Encrypt:
-        q1, q2 = random_integer(p1_size), random_integer(p2_size)
-        p1q1 + p2q2 + m
+        c := p * (kq + m) mod n
     Decrypt:
-        (c % p1) % p2            
-    to-do: solidify parameter sizes. """
+        p := c * pi mod n mod k """
 
-from os import urandom
-from math import log
-from fractions import gcd
+from utilities import random_integer, modular_inverse, size_in_bits
 
-from utilities import random_integer
+P_SIZE = 66
+K_SIZE = 66
+N_SIZE = 133
+Q_SIZE = 32
 
-__all__ = ["generate_key", "encrypt", "decrypt"]
-
-P1_SIZE = 110
-P2_SIZE = 36
-R_SIZE = 32
-    
-# algorithm    
-def generate_key(p1_size=P1_SIZE, p2_size=P2_SIZE):
-    """ usage: generate_key(p1_size=P1_SIZE,    
-                            p2_size=P2_SIZE) => secret_key
+def generate_key(p_size=P_SIZE, k_size=K_SIZE, n_size=N_SIZE):
+    """ usage: generate_key(p_size=66, k_size=66, 
+                            n_size=133) => private_key
                             
-        Returns two random integers, suitable for use as a secret key for the cipher. """
-    assert p1_size / p2_size >= 3
-    p1, p2 = random_integer(p1_size), random_integer(p2_size)    
-    while gcd(p1, p2) != 1:
-        p2 = random_integer(p2_size)
-    return p1, p2
+        Returns 3 random integers, suitable for use as a key """
+    p = random_integer(p_size)
+    k = random_integer(k_size)
+    while True: # instead of choosing p or n as a prime, just make sure modular inverse of p exists mod n
+        n = random_integer(n_size)
+        try:
+            pi = modular_inverse(p, n)
+        except ValueError:
+            continue
+        else:
+            break
+    #assert size_in_bits(p) + size_in_bits(k) < size_in_bits(n)
+    return p, pi, k, n
     
-def encrypt(message_integer, secret_key, r_size=R_SIZE):
-    """ usage: encrypt(message_integer, secret_key,
-                       r_size=R_SIZE) => ciphertext
-                       
-        Returns ciphertext of message_integer, encrypted under secret_key.
-        Ciphertexts are of the form p1q1 + p2q2 + m
-        Ciphertexts are homomorphic with respect to integer addition. """
-    p1, p2 = secret_key
-    if message_integer and log(message_integer, 2) >= (log(p2, 2)):
-        raise ValueError("message_integer too large to be encrypted with the supplied key p2: {}; m: {}".format(log(p2, 2), log(message_integer, 2)))
-    p1 *= random_integer(r_size)
-    _p2 = p2 * random_integer(r_size)
-    while _p2 > p1:
-        _p2 = p2 * random_integer(r_size)
-    return p1 + _p2 + message_integer  
+def encrypt(m, key, q_size=Q_SIZE):
+    """ usage: encrypt(m, key, q_size=32) => ciphertext
     
-def decrypt(ciphertext_integer, secret_key):
-    """ usage: decrypt(ciphertext_integer, secret_key) => plaintext
-    
-        Returns plaintext integer. """
-    p1, p2 = secret_key
-    return (ciphertext_integer % p1) % p2    
-    
-# unit test    
-def test_encrypt_decrypt():    
-    secret_key = generate_key()           
-    for m in range(256):                    
-        ciphertext = encrypt(m, secret_key)        
-        plaintext = decrypt(ciphertext, secret_key)        
-        assert plaintext == m, (plaintext, m)    
+        Encrypts an integer m using key.
+        Returns a ciphertext integer.
+        Ciphertexts are of the form: (p * ((k * q) + m)) % n
+        Ciphertexts support addition """
+    p, pi, k, n = key
+    q = random_integer(q_size)     
+    _c = (p * ((k * q) + m))
+    #assert _c > n, (_c, _c % n, n, size_in_bits(_c), size_in_bits(n))    
+    return (p * ((k * q) + m)) % n
         
-        m2 = 2
-        ciphertext2 = encrypt(m2, secret_key)
-        ciphertext3 = ciphertext + ciphertext2 + ciphertext2 + 5
-        plaintext3 = decrypt(ciphertext3, secret_key)
-        assert plaintext3 == m + m2 + m2 + 5, (plaintext3, m + m2 + m2)
-                     
+def decrypt(ciphertext, key):
+    """ usage: decrypt(ciphertext, key) => plaintext
+    
+        Decrypts ciphertext using key.
+        Returns plaintext integer. """
+    p, pi, k, n = key
+    return ((ciphertext * pi) % n) % k
+        
+def test_encrypt_decrypt():
+    from unittesting import test_symmetric_encrypt_decrypt
+    test_symmetric_encrypt_decrypt("modular", generate_key, encrypt, decrypt)
+    
 if __name__ == "__main__":
     test_encrypt_decrypt()
     

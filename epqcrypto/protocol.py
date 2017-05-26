@@ -13,12 +13,12 @@ ciphertext1 := encrypt(secret1, public_keyb) a -----ephemeral public key -- publ
                                              a <------- ciphertext2, ciphertext3, confirmation code ------  b ciphertext2: encrypt(secret2, public keya); 
                                                                                                               ciphertext3 := encrypt(secret3, ephemeral public key)
                                                                                                               confirmation code := hmac(string, session_secret)
- session secret: hkdf(secret1 XOR secret2 XOR secret3)
+ session keys: hkdf(secret1 XOR secret2 XOR secret3)
  if pubb and puba are compromised:
    adversary obtains secret1 by decrypting with private key a
    adversary obtains secret2 by decrypting with private key b
    adversary cannot obtain secret3 because they do not have the ephemeral private key
-       - adversary cannot obtain session secret"""
+       - adversary cannot obtain session keys"""
 import keyexchange
 import utilities
 from hashing import hmac, hash_function, hkdf
@@ -36,20 +36,20 @@ class Key_Exchange_Protocol(object):
         self.confirmation_code_size = len(hmac('', ''))              
         
     def initiate_exchange(self, others_public_key):
-        secret = self.secret1 = keyexchange.generate_random_secret(self.secret_size)                      
+        challenge, secret = keyexchange.exchange_key(others_public_key)
+        self.secret1 = secret        
         ephemeral_public_key, self.ephemeral_private_key = keyexchange.generate_keypair()
-        return keyexchange.exchange_key(secret, others_public_key), self.public_key, ephemeral_public_key
+        return challenge, self.public_key, ephemeral_public_key
         
     def responder_establish_secret(self, ciphertext, public_key, ephemeral_public_key):       
-        secret1 = keyexchange.recover_key(ciphertext, self.private_key)
-        secret2 = keyexchange.generate_random_secret(self.secret_size)
-        secret3 = keyexchange.generate_random_secret(self.secret_size)
-                       
-        keying_material = utilities.integer_to_bytes(secret1 ^ secret2 ^ secret3, self.secret_size)              
+        secret1 = keyexchange.recover_key(ciphertext, self.private_key)        
+        
+        ciphertext2, secret2 = keyexchange.exchange_key(public_key)
+        ciphertext3, secret3 = keyexchange.exchange_key(ephemeral_public_key)
+        
+        keying_material = utilities.integer_to_bytes(secret1 ^ secret2 ^ secret3, self.secret_size)       
         confirmation_code = self.derive_keys(keying_material)
         
-        ciphertext2 = keyexchange.exchange_key(secret2, public_key)
-        ciphertext3 = keyexchange.exchange_key(secret3, ephemeral_public_key)
         return ciphertext2, ciphertext3, confirmation_code        
     
     def initiator_establish_secret(self, ciphertext2, ciphertext3, confirmation_code):
@@ -172,8 +172,7 @@ class Secure_Connection(Basic_Connection):
     
     def __init__(self, public_key, private_key, hash_function=hash_function, secret_size=32):
         super(Secure_Connection, self).__init__()
-        self.key_exchange_protocol = Key_Exchange_Protocol(public_key, private_key, hash_function, secret_size)        
-        self.signature_public_key, self.signature_private_key = witnesssignatures.generate_keypair()        
+        self.key_exchange_protocol = Key_Exchange_Protocol(public_key, private_key, hash_function, secret_size)                
         self.pending_signature_requests = {}
         self.stage = "unconnected"
         self.trusted_public_keys = []
