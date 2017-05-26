@@ -17,17 +17,10 @@ def generate_key(p_size=P_SIZE, k_size=K_SIZE, n_size=N_SIZE):
                             n_size=133) => private_key
                             
         Returns 3 random integers, suitable for use as a key """
-    p = random_integer(p_size)
     k = random_integer(k_size)
-    while True: # instead of choosing p or n as a prime, just make sure modular inverse of p exists mod n
-        n = random_integer(n_size)
-        try:
-            pi = modular_inverse(p, n)
-        except ValueError:
-            continue
-        else:
-            break
-    #assert size_in_bits(p) + size_in_bits(k) < size_in_bits(n)
+    n = random_integer(n_size)
+    p = n - 1
+    pi = modular_inverse(p, n)
     return p, pi, k, n
     
 def encrypt(m, key, q_size=Q_SIZE):
