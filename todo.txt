@@ -5,6 +5,8 @@ to do list:
             - use that to call c libraries natively        
     
     
+random notes
+----------    
 # the most generic cipher is a gigantic fisher yates shuffle of all n-bit blocks
 # for example, for a 4 bit cipher, there are 2 ** 4 = 16 different possible message blocks
 # encryption would be as follows:
@@ -37,3 +39,64 @@ to do list:
 
     
     
+    
+# for successive p_i where next_p >= this_p ** 2
+# each p is a basis for a lattice
+# + is the superposition operator (point(s) + point(s))
+# * selects a point on the lattice (basis * point)
+# modulo (aka "mod" and "%") removes the modulo-d basis from the superposition (superposition_of_points % basis)
+# - (subtraction) removes some point(s) from the superposition (superposition_of_points - point(s))
+# / (division) determines the point on the lattice (point / basis) ((p * q) / p == q)
+
+# i.e.:
+#   (p1 * q1) + (p2 * q2)
+# q1 is a point on the p1 lattice
+# q2 is a point on the p2 lattice
+# the two are joined via the addition operator into a superposition of state
+# while in this superposition, they may be manipulated independently as well as simultaneously
+# points can be removed from the superposition if the basis are known
+# it is simply a matter of performing superposition_of_points modulo basis
+# i.e.:
+#   ((p1 * q1) + (p2 * q2)) mod p1 == p2 * q2   # modulo removes p1 * q1 from the equation
+#   ((p1 * q1) + (p2 * q2)) - (p2 * q2) == p1 * q1  # subtraction removes the previously acquired p2 * q2 from the superposition
+# 
+# modulo only requires a lattice basis (p)
+# while subtraction requires some point on the lattice (p * q)
+#   - or a superposition of points (p1 * q1 + p2 * q2 + ...)
+
+# elements may be manipulated individually by using the basis to address to element
+# for example:
+#   q1 := 10
+#   state := (p1 * q1) + (p2 * q2)
+#   state += (p1 * 2) # increments the point on the p1 lattice by 2
+#   state %= p2 # removes p2 from state
+#   state /= p1 # recovers q1 from state
+#   state == 12
+
+
+
+# p1 m1 + p2 mac(m1)
+
+
+Given $p1, p2$ and a sum $sum := p_1 q_1 + p_2 q_2$, how hard is it to recover any of: $q_1, q_2, q_1 + q_2$
+    - $p1, p2$ are approximately the same size in bits 
+    - $p1, p2$ are psuedorandom values, while $q_1 and q_2$ are independently generated random values
+    
+Right now, the size of each $p_i$ is about 1060 bits. 
+The size of each $q_i$ is 256 bits.    
+    - The $q_i$ may need to be a lot larger then then $p_i$; But until I understand why, I do not know what else to set it to
+
+    
+if p1q1 + p2q2 is easy to invert, then we can create ciphertexts that take the form of plaintext
+if p1q1 + p2q2 is hard to invert, then we use it for public key crypto
+
+
+# subset sum problem
+# 2 elements are summed from a huge set
+# from: https://en.wikipedia.org/wiki/Subset_sum_problem
+#> If N (the number of variables) is small, then an exhaustive search for the solution is practical. If P (the number of place values) is a small fixed number, then there are dynamic programming algorithms that can solve it exactly.
+#
+# huge set size makes exhaustive search impractical
+# huge set is generated via multiplication of large numbers
+#   - results in large sum of varying size
+  
