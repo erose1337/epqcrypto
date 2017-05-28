@@ -65,3 +65,48 @@ def modular_inverse(a, m):
     else:
         return x % m
         
+def big_prime(size_in_bytes):           
+    while True:
+        candidate = random_integer(size_in_bytes)
+        if candidate > 1 and is_prime(candidate):
+            return candidate
+            
+def is_prime(n, _mrpt_num_trials=10): # from https://rosettacode.org/wiki/Miller%E2%80%93Rabin_primality_test#Python
+    assert n >= 2
+    # special case 2
+    if n == 2:
+        return True
+    # ensure n is odd
+    if n % 2 == 0:
+        return False
+    # write n-1 as 2**s * d
+    # repeatedly try to divide n-1 by 2
+    s = 0
+    d = n-1
+    while True:
+        quotient, remainder = divmod(d, 2)
+        if remainder == 1:
+            break
+        s += 1
+        d = quotient
+    assert(2**s * d == n-1)
+ 
+    # test the base a to see whether it is a witness for the compositeness of n
+    def try_composite(a):
+        if pow(a, d, n) == 1:
+            return False
+        for i in range(s):
+            if pow(a, 2**i * d, n) == n-1:
+                return False
+        return True # n is definitely composite
+    
+    random.seed(random_bytes(32))
+    for i in range(_mrpt_num_trials):
+        a = random.randrange(2, n)
+        if try_composite(a):
+            return False
+ 
+    return True # no base tested showed n as composite
+    
+        
+        

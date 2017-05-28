@@ -1,46 +1,42 @@
-import secretkey
+import publickeyencryption
 from utilities import random_integer
 from persistence import save_data, load_data
 
-def generate_private_key(keygen_function=secretkey.generate_key):
-    """ usage: generate_private_key(keygen_function=secretkey.generate_key) => private_key
+def generate_private_key(keygen_function=publickeyencryption.generate_private_key):
+    """ usage: generate_private_key(keygen_function=publickeyencryption.generate_key) => private_key
     
         Generates a private key, which is the key for a secret key homomorphic cipher. """                           
-    return keygen_function(66, 66, 133)
+    return keygen_function()
         
-def generate_public_key(private_key, encryption_function=secretkey.encrypt):    
+def generate_public_key(private_key):    
     """ usage: generate_public_key(private_key,
-                                   encryption_function=secretkey.encrypt) => public_key
+                                   encryption_function=publickeyencryption.encrypt) => public_key
                                    
-        Returns two encryptions of 1, suitable for use as a public key. """
-    public_key = (encryption_function(1, private_key),
-                  encryption_function(1, private_key))
-    return public_key
-    
+        Returns a list of integers, suitable for use as a public key. """
+    return publickeyencryption.generate_public_key(private_key)
+       
 def generate_keypair(keygen_private=generate_private_key,
                      keygen_public=generate_public_key):
     """ usage: generate_keypair(): => public_key, private_key
     
-        Generates a public key and a private key. """                     
+        Generates a public key and a private key. """
     private_key = keygen_private()
     public_key = keygen_public(private_key)
-    return public_key, private_key
+    return public_key, private_key                
     
-def exchange_key(public_key, r_size=32):
+def exchange_key(public_key, r_size=32, encrypt=publickeyencryption.encrypt):
     """ usage: exchange_key(public_key, r_size=32) => ciphertext, shared_secret
     
         Generates a ciphertext and shared secret.
         The ciphertext is delivered to the holder of the private key.
-        shared_secret is the value they will obtain upon decrypting the ciphertext. """
-    p1, p2 = public_key
-    q1, q2 = random_integer(r_size), random_integer(r_size)
-    ciphertext = (p1 * q1) + (p2 * q2)
-    shared_secret = q1 + q2       
+        shared_secret is the value they will obtain upon decrypting the ciphertext. """    
+    shared_secret = random_integer(r_size)    
+    ciphertext = encrypt(shared_secret, public_key)      
     return ciphertext, shared_secret
     
-def recover_key(ciphertext, private_key, decryption_function=secretkey.decrypt):
+def recover_key(ciphertext, private_key, decryption_function=publickeyencryption.decrypt):
     """ usage: recover_key(ciphertext, private_key,
-                           decryption_function=secretkey.decrypt) => shared_secret
+                           decryption_function=publickeyencryption.decrypt) => shared_secret
                            
         Returns a shared secret. """
     return decryption_function(ciphertext, private_key)
@@ -90,7 +86,7 @@ def test_exchange_key_recover_key():
     for count in range(1024):             
         ciphertext, secret = exchange_key(public_key)
         _secret = recover_key(ciphertext, private_key)
-        assert _secret == secret, (_secret, secret)
+        assert _secret == secret, (count, _secret, secret)
     
     ciphertext1, secret1 = exchange_key(public_key)
     ciphertext2, secret2 = exchange_key(public_key)

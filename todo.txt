@@ -100,3 +100,80 @@ if p1q1 + p2q2 is hard to invert, then we use it for public key crypto
 # huge set is generated via multiplication of large numbers
 #   - results in large sum of varying size
   
+  
+  
+  
+modular stuff
+----
+# if p == n - 1, then p == modular_inverse(p, n)
+# also, p == n - 1 is not vulnerable to gcd
+# x * (n - 1) mod n reverses the set of elements  0, 1, 2, ... n
+
+# x * y mod n
+# produces pairs that add up to n at opposite ends
+# n = 10
+# x = 7
+# [(x * count) % n for count in range(n)]
+# [0, 7, 4, 1, 8, 5, 2, 9, 6, 3]
+#     7                       3
+#        4                 6
+#          1            9
+#              8     2
+#                 5
+# each pair sums to n (10)
+# (except for the 5 in the middle which is not present when n is odd)
+# the difference between each successive point is equal to the difference between x and n
+# 
+# gcd(p1, p2) == (n - x if x < n) else x
+
+# (x * (n - y)) mod n == y(n - x) mod n
+# (x * (n + y)) mod n == y(n + x) mod n
+# (x * (n * y)) mod n == y * n * x mod n
+
+# x * (n - 1) mod n is equivalent to n - x
+# x * (n - 2) mod n is equivalent to 2n - 2x
+# x * (n - y) mod n is equivalent to yn - yx
+# x * (n + y) mod n is equivalent to yn + yx
+
+# additive inverse of x mod n == x * (n - 1) mod n            x + y == 0
+# multiplicative inverse of x mod n == (x ** (n - 2)) mod n   x * y == 1
+# exponential inverse of x mod n == tetrate(x, n - 1) mod n   x ** y == 1
+#   - incorrect?
+#   tetrate(x, n - 1, n) yields either 1 or x
+#       - yields 1 if x is even
+#       - yields x is x is odd
+
+# x * x_i (n - x) (n - x_i)  
+
+
+# key swap algorithm
+# swaps the keys used on c1 and c2
+# keys also swap polarity and become the inverse
+# c1 := kn + kx
+# c2 := k2n + k2y
+# c3 = c1 + c2
+# c4a = (c3 * modular_inverse(k, n)
+
+
+# kn + kx + k2n + k2y
+# ki(kn + kx + k2n + k2y)
+# n + x + kik2n + kik2y
+# k2i(n + x + k1k2n + k1k2y)
+
+# k2in + k2ix + k1in + k1iy
+
+
+
+
+(k1 * r1) + m1
+k2 * hash(m1)
+
+
+# how to take the remainder when doing modulo?
+# i.e. pq + e mod n
+# pi(pq + e) == q + pie
+# (pq + e) - (q + pie) == (p1q + e) - (1q + pie)
+# (p1 - 1)q - (e - pie)
+
+
+# pq
