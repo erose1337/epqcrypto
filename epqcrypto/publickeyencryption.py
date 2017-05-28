@@ -1,7 +1,6 @@
 import secretkey
 from utilities import random_integer
 
-DIMENSION = 2
 R_SIZE = 32
 
 def generate_private_key(keygen_function=secretkey.generate_key):    
@@ -11,16 +10,12 @@ def generate_private_key(keygen_function=secretkey.generate_key):
         Returns 3 numbers, suitable for use as a private key. """
     return keygen_function()
         
-def generate_public_key(private_key, dimension=DIMENSION, encryption_function=secretkey.encrypt):    
+def generate_public_key(private_key, encryption_function=secretkey.encrypt):    
     """ usage: generate_public_key(private_key, dimension=2,
                                    encryption_function=secretkey.encrypt) => public_key
                                    
-        Returns an encryption of 1, as well as encryptions of 0s.
-        Increasing the dimension should increase the hardness of the public key encryption operation, but will also increase the size of the public key. """
-    public_key = [encryption_function(1, private_key)]        
-    for counter in range(dimension - 1):
-        public_key.append(encryption_function(0, private_key))           
-    return public_key
+        Returns an encryption of 1, as well as encryptions of 0s."""
+    return (encryption_function(0, private_key), encryption_function(1, private_key))
     
 def generate_keypair(keygen_private=generate_private_key,
                      keygen_public=generate_public_key):
@@ -37,7 +32,7 @@ def encrypt(message, public_key, r_size=R_SIZE, n=secretkey.N):
         
         Returns a ciphertext.
         r_size determines the size of each randomly generated number. """      
-    return ((public_key[0] * message) + sum(point * random_integer(r_size) for point in public_key[1:])) % n    
+    return ((public_key[0] * random_integer(r_size)) + (public_key[1] * message)) % n    
     
 def decrypt(ciphertext, private_key, decryption_function=secretkey.decrypt):
     """ usage: decrypt(ciphertext, private_key,
