@@ -1,50 +1,51 @@
-import secretkey
-from utilities import random_integer
+from utilities import random_integer, modular_inverse
 
-R_SIZE = 32
+N = 90539821999601667010016498433538092350601848065509335050382778168697877622963864208930434463149476126948597274673237394102007067278620641565896411613073030816577188842779580374266789048335983054644275218968175557708746520394332802669663
 
-def generate_private_key(keygen_function=secretkey.generate_key):    
-    """ usage: generate_private_key(keygen_function=secretkey.generate_key,
-                                    p_size=P_SIZE, k_size=K_SIZE, n_size=N_SIZE) => private_key
-                                    
-        Returns 3 numbers, suitable for use as a private key. """
-    return keygen_function()
-        
-def generate_public_key(private_key, encryption_function=secretkey.encrypt):    
-    """ usage: generate_public_key(private_key, dimension=2,
-                                   encryption_function=secretkey.encrypt) => public_key
-                                   
-        Returns an encryption of 1, as well as encryptions of 0s."""
-    return (encryption_function(0, private_key), encryption_function(1, private_key))
+def generate_private_key(pi_size=65, n=N):
+    """ usage: generate_private_key(pi_size=65, n=N) => private_key
     
-def generate_keypair(keygen_private=generate_private_key,
-                     keygen_public=generate_public_key):
-    """ usage: generate_keypair(keygen_private=generate_private_key,
-                                keygen_public=generate_public_key) => public_key, private_key
-                                
-        Returns a public key and a private key. """        
-    private_key = keygen_private()
-    public_key = keygen_public(private_key)
+        Returns two integers. """
+    pi = random_integer(pi_size)    
+    p = modular_inverse(pi, n)       
+    return p, pi
+    
+def generate_public_key(private_key, q_size=32, n=N): 
+    """ usage: generate_public_key(private_key, q_size=32, n=N) => public_key
+    
+        Returns one integer. """
+    p, pi = private_key
+    pq = (p * random_integer(q_size)) % n      
+    return pq
+    
+def generate_keypair():
+    """ usage: generate_keypair() => public_key, private_key
+    
+        Returns a public key and a private key. """
+    private_key = generate_private_key()
+    public_key = generate_public_key(private_key)
     return public_key, private_key
     
-def encrypt(message, public_key, r_size=R_SIZE, n=secretkey.N):
-    """ usage: encrypt(message, public_key, r_size=R_SIZE) =>
-        
-        Returns a ciphertext.
-        r_size determines the size of each randomly generated number. """      
-    return ((public_key[0] * random_integer(r_size)) + (public_key[1] * message)) % n    
+def encrypt(m, public_key, r_size=32, n=N): 
+    """ usage: encrypt(m, public_key, r_size=32, n=N) => ciphertext
     
-def decrypt(ciphertext, private_key, decryption_function=secretkey.decrypt):
-    """ usage: decrypt(ciphertext, private_key,
-                       decryption_function=secretkey.decrypt) => plaintext
-                       
-        Returns plaintext. """
-    return decryption_function(ciphertext, private_key)
+        Returns ciphertext integer.
+        m and public_key should be integers. """
+    return ((public_key * random_integer(r_size)) + m) % n
+        
+def decrypt(ciphertext, private_key, n=N): 
+    """ usage: decrypt(ciphertext, private_key, n=N) => plaintext
+    
+        Returns plaintext integer. """        
+    p, pi = private_key
+    pie_q = (pi * ciphertext) % n
+    q = pie_q % pi
+    pie = pie_q - q
+    return pie / pi    
     
 def test_encrypt_decrypt():
     from unittesting import test_asymmetric_encrypt_decrypt
-    test_asymmetric_encrypt_decrypt("secretkeypublickey", generate_keypair, encrypt, decrypt, plaintext_size=32, iterations=10000)
+    test_asymmetric_encrypt_decrypt("epqcrypto.publickeyencryption", generate_keypair, encrypt, decrypt, iterations=10000)
     
 if __name__ == "__main__":
-    test_encrypt_decrypt()        
-        
+    test_encrypt_decrypt()

@@ -1,3 +1,5 @@
+raise NotImplementedError("Module is deprecated (Currently not required to facilitate PKE)")
+
 """ Keygen:
         n is public and pre-agreed (does not need to be unique)
         random integers p, k such that p >= n - p and k >= max_size(possible_plaintexts)
@@ -17,8 +19,7 @@ Q_SIZE = 32
 N = 5020634727083374867033428467921864279987846875827783570524548075331408526653673292934012044279137287122086838606810449224360138237621829626400015970097740555578731440429830737191470731438461919109460716900139034514939537967910223820430209883
 
 def generate_key(p_size=P_SIZE, k_size=K_SIZE, n=N):
-    """ usage: generate_key(p_size=66 k_size=66, 
-                            n_size=133) => private_key
+    """ usage: generate_key(p_size=32 k_size=33, n=N) => private_key
                             
         Returns 3 integers, suitable for use as a key """              
     assert p_size <= N_SIZE, (p_size, N_SIZE)
@@ -35,7 +36,7 @@ def generate_key(p_size=P_SIZE, k_size=K_SIZE, n=N):
     return p, p_i, k
     
 def encrypt(m, key, q_size=Q_SIZE, n=N):
-    """ usage: encrypt(m, key, q_size=32) => ciphertext
+    """ usage: encrypt(m, key, q_size=32, n=N) => ciphertext
     
         Encrypts an integer m using key.
         Returns a ciphertext integer.
@@ -45,7 +46,7 @@ def encrypt(m, key, q_size=Q_SIZE, n=N):
     return (key[0] * ((key[2] * random_integer(q_size)) + m)) % n
     
 def decrypt(ciphertext, key, n=N):
-    """ usage: decrypt(ciphertext, key) => plaintext
+    """ usage: decrypt(ciphertext, key, n=N) => plaintext
     
         Decrypts ciphertext using key.
         Returns plaintext integer. """

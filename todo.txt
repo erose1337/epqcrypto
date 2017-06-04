@@ -177,3 +177,48 @@ k2 * hash(m1)
 
 
 # pq
+
+
+
+
+
+
+
+k * m mod P creates a permutation of P elements
+
+[(k * m) % P for m in range(P)]
+
+0 is a fixed point
+
+[0, 1, 2, 3, 4]
+[0, 3, 1, 4, 2] # k = 3
+
+if a random ordering of set(range(P)) is shuffled by k, can k be determined, given only the shuffled set?
+
+[0, 3, 1, 4, 2] # a "random" ordering
+[0, 4, 3, 2, 1] # after shuffling according to k = 3
+
+[0, 1, 2, 3, 4] # a "random" ordering
+[0, 4, 3, 2, 1] # after shuffling according to k = 5
+
+Multiple k could have produced the shuffled set.
+Each possible value of k could have produced the shuffled set, and each has a corresponding initial ordering.
+If the initial ordering can be guessed with any probability better then random, then the design will leak key information.
+
+The initial ordering is produced by (k2 * r) + m % P, which is at most equal to P - 1
+Assuming m is constant, the distribution is determined by k2: k2 will be the difference between two successive items
+
+The distribution is determined by (k * k2 * i) % P for i in range(P)
+The difference between successive i is equivalent to k * k2
+i are not generated in order; they are drawn randomly from the available space
+
+generate many encryptions of 0
+take the difference between many pairs
+compute gcd of many such differences
+compute gcd of gcds
+factor obtained element to obtain k2
+use k2 to learn initial ordering
+use knowledge of initial ordering to recover k
+ 
+
+    
