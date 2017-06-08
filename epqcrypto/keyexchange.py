@@ -1,76 +1,64 @@
-import publickeyencryption
-from utilities import random_integer
-from persistence import save_data, load_data
+from crypto.utilities import random_integer, modular_inverse
 
-def generate_private_key(keygen_function=publickeyencryption.generate_private_key):
-    """ usage: generate_private_key(keygen_function=publickeyencryption.generate_key) => private_key
-    
-        Generates a private key, which is the key for a secret key homomorphic cipher. """                           
-    return keygen_function()
-        
-def generate_public_key(private_key):    
-    """ usage: generate_public_key(private_key,
-                                   encryption_function=publickeyencryption.encrypt) => public_key
-                                   
-        Returns a list of integers, suitable for use as a public key. """
-    return publickeyencryption.generate_public_key(private_key)
-       
-def generate_keypair(keygen_private=generate_private_key,
-                     keygen_public=generate_public_key):
-    """ usage: generate_keypair(): => public_key, private_key
-    
-        Generates a public key and a private key. """
-    private_key = keygen_private()
-    public_key = keygen_public(private_key)
-    return public_key, private_key                
-    
-def exchange_key(public_key, r_size=32, encrypt=publickeyencryption.encrypt):
-    """ usage: exchange_key(public_key, r_size=32) => ciphertext, shared_secret
-    
-        Generates a ciphertext and shared secret.
-        The ciphertext is delivered to the holder of the private key.
-        shared_secret is the value they will obtain upon decrypting the ciphertext. """    
-    shared_secret = random_integer(r_size)    
-    ciphertext = encrypt(shared_secret, public_key)      
-    return ciphertext, shared_secret
-    
-def recover_key(ciphertext, private_key, decryption_function=publickeyencryption.decrypt):
-    """ usage: recover_key(ciphertext, private_key,
-                           decryption_function=publickeyencryption.decrypt) => shared_secret
-                           
-        Returns a shared secret. """
-    return decryption_function(ciphertext, private_key)
-        
-def _randomize_key(pb1, pb2, r=lambda size=8: secretkey.random_integer(size)):
-    new_key = lambda: (pb1 * r()) - (pb2 * r(7)) + (pb1 * r()) - (pb2 * r(7))    
-    key = new_key()    
-    while key < 0 or log(key, 2) > 1200: # re-roll if it's negative or too big
-        key = new_key()    
-    assert key % pb1 != 0
-    assert key % pb2 != 0        
-    return key
-    
-def randomize_public_key(public_key):    
-    """ usage: randomize_public_key(public_key) => randomized public_key
-    
-        Returns a randomized public key. 
-        The resultant public key is still linked with the same private key, but it should not be possible to associate the new public key with the original one. """ 
-    raise NotImplementedError()
-    pb1, pb2 = public_key
-    new1 = _randomize_key(pb1, pb2)
-    new2 = _randomize_key(pb1, pb2)
-    while gcd(new1, new2) != 1:
-        new1 = _randomize_key(pb1, pb2)
-    return new1, new2    
+N = 90539821999601667010016498433538092350601848065509335050382778168697877622963864208930434463149476126948597274673237394102007067278620641565896411613073030816577188842779580374266789048335983054644275218968175557708746520394332802669663
 
+def generate_private_key(pi_size=65, n=N):
+    """ usage: generate_private_key(pi_size=65, n=N) => private_key
+    
+        Returns 1 integer, suitable for use as a private key. """
+    pi = random_integer(pi_size)       
+    return pi
+    
+def generate_public_key(private_key, q_size=32, n=N): 
+    """ usage: generate_public_key(private_key, q_size=32, n=N) => public_key
+    
+        Returns 1 integer, suitable for use as a public key. """
+    p = modular_inverse(private_key, n)
+    pq = (p * random_integer(q_size)) % n      
+    return pq
+    
+def generate_keypair():
+    """ usage: generate_keypair() => public_key, private_key
+    
+        Generate a keypair; Returns 2 integers. """
+    private_key = generate_private_key()
+    public_key = generate_public_key(private_key)
+    return public_key, private_key
+    
+def exchange_key(public_key, q_size=32, n=N): 
+    """ usage: exchange_key(public_key, q_size=32, e_size=32, n=N) => ciphertext, secret
+    
+        Returns a ciphertext and a shared secret.
+        The ciphertext should be delivered to the holder of the associated private key, so that they may recover the shared secret. """
+    e = random_integer(q_size)        
+    return ((public_key * random_integer(q_size)) + e) % n, e
+                
+def recover_key(ciphertext, private_key, n=N):
+    """ usage: recover_key(ciphertext, private_key, n=N) => secret
+    
+        Returns a shared secret in the form of a random integer. """
+    pi = private_key
+    pie_q = (pi * ciphertext) % n
+    q = pie_q % pi
+    pie = pie_q - q
+    return pie / pi   
+    
 def hash_public_key(hash_function, public_key):
+    """ usage: hash_public_key(hash_function, public_key) => public_key_fingerprint
+    
+        Returns a hash of public key, suitable for use as an identifier. """
     return hash_function(serialize_public_key(public_key))
         
-# serialization  
 def serialize_public_key(public_key):
+    """ usage: serialize_public_key(public_key) => serialized_public_key
+        
+        Returns a saved public key, in the form of bytes. """
     return save_data(public_key)
     
 def deserialize_public_key(serialized_public_key):
+    """ usage: deserialize_public_key(serialized_public_key) => public_key
+        
+        Loads a saved public key, as produced by serialize_public_key. """
     return load_data(serialized_public_key)
     
 def test_serialized_public_key_deserialize_public_key():
@@ -80,29 +68,9 @@ def test_serialized_public_key_deserialize_public_key():
     assert _public_key == public_key, (_public_key, public_key)
     
 def test_exchange_key_recover_key():
-    print("Generating keypair...")
-    public_key, private_key = generate_keypair()
-    print("...done.")
-    for count in range(1024):             
-        ciphertext, secret = exchange_key(public_key)
-        _secret = recover_key(ciphertext, private_key)
-        assert _secret == secret, (count, _secret, secret)
-    
-    ciphertext1, secret1 = exchange_key(public_key)
-    ciphertext2, secret2 = exchange_key(public_key)
-    ciphertext3 = ciphertext1 + ciphertext2
-    assert recover_key(ciphertext3, private_key) == secret1 + secret2
-    assert recover_key(ciphertext3 + (public_key[0] * 1), private_key) == secret1 + 1 + secret2
-    
-    from crypto.utilities import size_in_bits
-    public_sizes = [size_in_bits(item) for item in public_key]
-    private_sizes = [size_in_bits(item) for item in private_key]
-    print("Public key size: p1: {}; p2: {}; Total: {}".format(*public_sizes + [sum(public_sizes)]))
-    print("Private key size: p: {}; k: {}; n: {}; Total: {}".format(*private_sizes + [sum(private_sizes)]))
-    print("Ciphertext size : {}".format(size_in_bits(ciphertext3)))
-    print("(sizes are in bits)")
+    from unittesting import test_key_exchange
+    test_key_exchange("epqcryptokeyexchange", generate_keypair, exchange_key, recover_key, iterations=10000)
     
 if __name__ == "__main__":
-    test_exchange_key_recover_key()                    
-    test_serialized_public_key_deserialize_public_key()    
-    
+    test_exchange_key_recover_key()
+           
