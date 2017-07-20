@@ -3,8 +3,8 @@
 import hashlib
 import hmac as _hmac
 
-from persistence import save_data, load_data
-from utilities import slide, xor_subroutine, random_bytes
+from epqcrypto.persistence import save_data, load_data
+from epqcrypto.utilities import slide, xor_subroutine, random_bytes
 
 __all__ = ("encrypt", "decrypt")           
 

@@ -1,6 +1,6 @@
 from timeit import default_timer
 
-from utilities import random_integer, size_in_bits
+from epqcrypto.utilities import random_integer, size_in_bits
 
 def test_for_homomorphism(ciphertext1, ciphertext2, decrypt, key, m1, m2):    
     if decrypt(ciphertext1 + ciphertext2, key) == m1 + m2:

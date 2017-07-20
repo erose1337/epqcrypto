@@ -1,7 +1,7 @@
 from os import urandom
 
-import keyexchange
-from hashing import hmac, hash_function
+import epqcrypto.asymmetric.keyexchange
+from epqcrypto.symmetric.hashing import hmac, hash_function
 
 def generate_keypair():
     return keyexchange.generate_keypair()

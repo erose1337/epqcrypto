@@ -1,9 +1,9 @@
 """ Provides authenticated encryption and decryption functions using keyexchange and aead. 
     Turns keyexchange into public key encryption (+ authenticated associated data). """    
-import keyexchange
-import aead
-from persistence import save_data, load_data
-from utilities import random_bytes, serialize_int
+import epqcrypto.asymmetric.keyexchange as keyexchange
+import epqcrypto.symmetric.aead as aead
+from epqcrypto.persistence import save_data, load_data
+from epqcrypto.utilities import random_bytes, serialize_int
 
 __all__ = ("encrypt", "decrypt")           
 

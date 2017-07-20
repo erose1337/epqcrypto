@@ -49,3 +49,7 @@ Temporary Items
 *.pyc
 *.so
 *.c
+
+/build
+/dist
+/epqcrypto.egg-info

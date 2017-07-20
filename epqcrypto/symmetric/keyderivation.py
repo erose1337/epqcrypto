@@ -2,7 +2,7 @@ from os import urandom
 import hashlib
 import hmac
 
-from persistence import save_data, load_data
+from epqcrypto.persistence import save_data, load_data
 
 def hash_password(password, iterations, algorithm="pbkdf2hmac", sub_algorithm="sha512",
                                         salt=None, salt_size=16, output_size=32):    

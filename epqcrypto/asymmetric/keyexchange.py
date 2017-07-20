@@ -1,21 +1,23 @@
-from crypto.utilities import random_integer, modular_inverse
+from epqcrypto.utilities import random_integer, modular_inverse
 
-N = 90539821999601667010016498433538092350601848065509335050382778168697877622963864208930434463149476126948597274673237394102007067278620641565896411613073030816577188842779580374266789048335983054644275218968175557708746520394332802669663
+P = 90539821999601667010016498433538092350601848065509335050382778168697877622963864208930434463149476126948597274673237394102007067278620641565896411613073030816577188842779580374266789048335983054644275218968175557708746520394332802669663
 
-def generate_private_key(pi_size=65, n=N):
-    """ usage: generate_private_key(pi_size=65, n=N) => private_key
+def generate_private_key(short_inverse_size=65, p=P):
+    """ usage: generate_private_key(short_inverse_size=65, p=P) => private_key
     
         Returns 1 integer, suitable for use as a private key. """
-    pi = random_integer(pi_size)       
-    return pi
+    short_inverse = random_integer(short_inverse_size)       
+    return short_inverse
     
-def generate_public_key(private_key, q_size=32, n=N): 
-    """ usage: generate_public_key(private_key, q_size=32, n=N) => public_key
+def generate_public_key(private_key, q_size=32, p=P): 
+    """ usage: generate_public_key(private_key, q_size=32, p=P) => public_key
     
         Returns 1 integer, suitable for use as a public key. """
-    p = modular_inverse(private_key, n)
-    pq = (p * random_integer(q_size)) % n      
-    return pq
+    random_number = modular_inverse(private_key, p) # selects a random integer with an appropriate sized inverse by selecting the inverse first
+    public_key = (random_number * random_integer(q_size)) % p    
+    while public_key & 1 != 1:
+        public_key = (random_number * random_integer(q_size)) % p
+    return public_key
     
 def generate_keypair():
     """ usage: generate_keypair() => public_key, private_key
@@ -25,23 +27,23 @@ def generate_keypair():
     public_key = generate_public_key(private_key)
     return public_key, private_key
     
-def exchange_key(public_key, q_size=32, n=N): 
-    """ usage: exchange_key(public_key, q_size=32, e_size=32, n=N) => ciphertext, secret
+def exchange_key(public_key, s_size=32, e_size=32, p=P): 
+    """ usage: exchange_key(public_key, s_size=32, e_size=32, p=P) => ciphertext, secret
     
         Returns a ciphertext and a shared secret.
         The ciphertext should be delivered to the holder of the associated private key, so that they may recover the shared secret. """
-    e = random_integer(q_size)        
-    return ((public_key * random_integer(q_size)) + e) % n, e
+    e = random_integer(e_size)        
+    return ((public_key * random_integer(s_size)) + e) % p, e
                 
-def recover_key(ciphertext, private_key, n=N):
-    """ usage: recover_key(ciphertext, private_key, n=N) => secret
+def recover_key(ciphertext, private_key, p=P):
+    """ usage: recover_key(ciphertext, private_key, p=P) => secret
     
         Returns a shared secret in the form of a random integer. """
-    pi = private_key
-    pie_q = (pi * ciphertext) % n
-    q = pie_q % pi
-    pie = pie_q - q
-    return pie / pi   
+    short_inverse = private_key
+    sie_q = (short_inverse * ciphertext) % p
+    q = sie_q % short_inverse
+    sie = sie_q - q
+    return sie / short_inverse   
     
 def hash_public_key(hash_function, public_key):
     """ usage: hash_public_key(hash_function, public_key) => public_key_fingerprint

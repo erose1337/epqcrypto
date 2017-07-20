@@ -36,9 +36,9 @@
 from os import urandom
 from math import log
 
-import keyexchange
-from hashing import hmac, hash_function
-from utilities import integer_to_bytes, bytes_to_integer, xor_subroutine
+import epqcrypto.asymmetric.keyexchange
+from epqcrypto.symmetric.hashing import hmac, hash_function
+from epqcrypto.utilities import integer_to_bytes, bytes_to_integer, xor_subroutine
 
 def _retrieve_validation_key(encrypted_signing_key, signers_private_key):    
     return keyexchange.recover_key(encrypted_signing_key, signers_private_key)

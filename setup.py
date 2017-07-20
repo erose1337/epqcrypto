@@ -1,8 +1,10 @@
 from setuptools import setup
 
 options = {"name" : "epqcrypto",
-           "version" : "0.4a",
-           "description" : "Experimental Post-Quantum Cryptography",
-           "classifiers" : ["License :: Public Domain"]}
+           "version" : "0.5a",
+           "description" : "Ella's Post-Quantum Cryptography",
+           "classifiers" : ["License :: Public Domain"],
+           "packages" : ["epqcrypto", "epqcrypto.asymmetric", "epqcrypto.symmetric", "epqcrypto.protocol"],
+           "py_modules" : ["persistence", "unittesting", "utilities"]}
            
 setup(**options)
