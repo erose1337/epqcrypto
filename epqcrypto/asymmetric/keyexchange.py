@@ -17,14 +17,17 @@ def generate_private_key(short_inverse_size=65, p=P):
     short_inverse = random_integer(short_inverse_size)       
     return short_inverse
     
-def generate_public_key(private_key, r_size=32, p=P): 
+def generate_public_key(private_key, r_size=32, p=P, point_count=2): 
     """ usage: generate_public_key(private_key, r_size=32, p=P) => public_key
     
         Returns 1 integer, suitable for use as a public key. """
     random_number = modular_inverse(private_key, p) # selects a random integer with an appropriate sized inverse by selecting the inverse first
-    public_key = (random_number * random_integer(r_size)) % p    
-    while public_key & 1 != 1:
-        public_key = (random_number * random_integer(r_size)) % p
+    public_key = []
+    for count in range(point_count):
+        point = (random_number * random_integer(r_size)) % p    
+        while point & 1 != 1:
+            point = (random_number * random_integer(r_size)) % p
+        public_key.append(point)
     return public_key
     
 def generate_keypair():
@@ -41,7 +44,7 @@ def exchange_key(public_key, s_size=32, e_size=32, p=P):
         Returns a ciphertext and a shared secret.
         The ciphertext should be delivered to the holder of the associated private key, so that they may recover the shared secret. """
     e = random_integer(e_size)        
-    return ((public_key * random_integer(s_size)) + e) % p, e
+    return ((public_key[0] * random_integer(s_size)) + (public_key[1] * random_integer(s_size)) + e) % p, e
                 
 def recover_key(ciphertext, private_key, p=P):
     """ usage: recover_key(ciphertext, private_key, p=P) => secret
