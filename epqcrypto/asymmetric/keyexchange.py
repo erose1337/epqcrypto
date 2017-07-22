@@ -26,9 +26,7 @@ def generate_public_key(private_key, r_size=32, p=P, point_count=POINT_COUNT):
     random_number = modular_inverse(private_key, p) # selects a random integer with an appropriate sized inverse by selecting the inverse first
     public_key = []
     for count in range(point_count):
-        point = (random_number * random_integer(r_size)) % p    
-        while point & 1 != 1:
-            point = (random_number * random_integer(r_size)) % p
+        point = (random_number * random_integer(r_size)) % p            
         public_key.append(point)
     return public_key
     
@@ -49,8 +47,7 @@ def exchange_key(public_key, s_size=32, e_size=32, p=P):
     ciphertext = 0
     for element in public_key:
         ciphertext += element * random_integer(s_size)
-    return (ciphertext + e) % p, e
-    #return ((public_key[0] * random_integer(s_size)) + (public_key[1] * random_integer(s_size)) + e) % p, e
+    return (ciphertext + e) % p, e    
                 
 def recover_key(ciphertext, private_key, p=P):
     """ usage: recover_key(ciphertext, private_key, p=P) => secret
