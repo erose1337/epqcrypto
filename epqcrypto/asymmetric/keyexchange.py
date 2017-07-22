@@ -2,6 +2,8 @@ from epqcrypto.utilities import random_integer, modular_inverse
 
 P = 90539821999601667010016498433538092350601848065509335050382778168697877622963864208930434463149476126948597274673237394102007067278620641565896411613073030816577188842779580374266789048335983054644275218968175557708746520394332802669663
 
+POINT_COUNT = 2
+
 def calculate_parameter_sizes(security_level):
     """ usage: calculate_parameters_sizes(security_level) => short_inverse size, r size, s size, e size, P size
     
@@ -17,7 +19,7 @@ def generate_private_key(short_inverse_size=65, p=P):
     short_inverse = random_integer(short_inverse_size)       
     return short_inverse
     
-def generate_public_key(private_key, r_size=32, p=P, point_count=2): 
+def generate_public_key(private_key, r_size=32, p=P, point_count=POINT_COUNT): 
     """ usage: generate_public_key(private_key, r_size=32, p=P) => public_key
     
         Returns 1 integer, suitable for use as a public key. """
@@ -43,8 +45,12 @@ def exchange_key(public_key, s_size=32, e_size=32, p=P):
     
         Returns a ciphertext and a shared secret.
         The ciphertext should be delivered to the holder of the associated private key, so that they may recover the shared secret. """
-    e = random_integer(e_size)        
-    return ((public_key[0] * random_integer(s_size)) + (public_key[1] * random_integer(s_size)) + e) % p, e
+    e = random_integer(e_size)  
+    ciphertext = 0
+    for element in public_key:
+        ciphertext += element * random_integer(s_size)
+    return (ciphertext + e) % p, e
+    #return ((public_key[0] * random_integer(s_size)) + (public_key[1] * random_integer(s_size)) + e) % p, e
                 
 def recover_key(ciphertext, private_key, p=P):
     """ usage: recover_key(ciphertext, private_key, p=P) => secret
