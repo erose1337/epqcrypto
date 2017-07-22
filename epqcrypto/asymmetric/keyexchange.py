@@ -55,9 +55,7 @@ def recover_key(ciphertext, private_key, p=P):
         Returns a shared secret in the form of a random integer. """
     short_inverse = private_key
     sie_q = (short_inverse * ciphertext) % p
-    q = sie_q % short_inverse
-    sie = sie_q - q
-    return sie / short_inverse   
+    return sie_q / short_inverse  
     
 def hash_public_key(hash_function, public_key):
     """ usage: hash_public_key(hash_function, public_key) => public_key_fingerprint
