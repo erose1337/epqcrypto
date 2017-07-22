@@ -1,7 +1,7 @@
 from setuptools import setup
 
 options = {"name" : "epqcrypto",
-           "version" : "0.5a",
+           "version" : "0.6a",
            "description" : "Ella's Post-Quantum Cryptography",
            "classifiers" : ["License :: Public Domain"],
            "packages" : ["epqcrypto", "epqcrypto.asymmetric", "epqcrypto.symmetric", "epqcrypto.protocol"],
