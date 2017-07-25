@@ -1,8 +1,6 @@
 from epqcrypto.utilities import random_integer, modular_inverse
 
-P = 90539821999601667010016498433538092350601848065509335050382778168697877622963864208930434463149476126948597274673237394102007067278620641565896411613073030816577188842779580374266789048335983054644275218968175557708746520394332802669663
-
-POINT_COUNT = 5
+P = 2162856158844985461289249749615925877431829137352992256594209856594439223948437451595264572685544280084236320535053554120005641780594461360999924859753577717547132577717151568525764429614531460013832016836541995858042528967106770950884707583431395743392711430035889618934835006665894726069789187736390533376523267
 
 def calculate_parameter_sizes(security_level):
     """ usage: calculate_parameters_sizes(security_level) => short_inverse size, r size, s size, e size, P size
@@ -17,19 +15,19 @@ def generate_private_key(short_inverse_size=65, p=P):
     
         Returns 1 integer, suitable for use as a private key. """
     short_inverse = random_integer(short_inverse_size)       
-    return short_inverse
+    a = modular_inverse(short_inverse, p)
+    b = random_integer(32)
+    c = random_integer(32)    
+    return short_inverse, a, b, c
     
-def generate_public_key(private_key, r_size=32, p=P, point_count=POINT_COUNT): 
+def generate_public_key(private_key, r_size=32, p=P): 
     """ usage: generate_public_key(private_key, r_size=32, p=P) => public_key
     
         Returns 1 integer, suitable for use as a public key. """
-    random_number = modular_inverse(private_key, p) # selects a random integer with an appropriate sized inverse by selecting the inverse first
-    public_key = []
-    for count in range(point_count):
-        point = (random_number * random_integer(r_size)) % p            
-        public_key.append(point)
+    ai, a, b, c = private_key
+    public_key = ((a * b) + c) % p    
     return public_key
-    
+        
 def generate_keypair():
     """ usage: generate_keypair() => public_key, private_key
     
@@ -38,49 +36,24 @@ def generate_keypair():
     public_key = generate_public_key(private_key)
     return public_key, private_key
     
-def exchange_key(public_key, s_size=32, e_size=32, p=P): 
+def exchange_key(public_key, s_size=32, e_size=64, p=P): 
     """ usage: exchange_key(public_key, s_size=32, e_size=32, p=P) => ciphertext, secret
     
         Returns a ciphertext and a shared secret.
         The ciphertext should be delivered to the holder of the associated private key, so that they may recover the shared secret. """
-    e = random_integer(e_size)  
-    ciphertext = 0
-    for element in public_key:
-        ciphertext += element * random_integer(s_size)
-    return (ciphertext + e) % p, e    
-                
+    s = random_integer(s_size)  
+    ciphertext = (public_key * s) + random_integer(e_size)
+    return ciphertext % p, s
+    
 def recover_key(ciphertext, private_key, p=P):
     """ usage: recover_key(ciphertext, private_key, p=P) => secret
     
         Returns a shared secret in the form of a random integer. """
-    short_inverse = private_key
-    sie_q = (short_inverse * ciphertext) % p
-    return sie_q / short_inverse  
-    
-def hash_public_key(hash_function, public_key):
-    """ usage: hash_public_key(hash_function, public_key) => public_key_fingerprint
-    
-        Returns a hash of public key, suitable for use as an identifier. """
-    return hash_function(serialize_public_key(public_key))
+    ai, a, b, c = private_key
+    rb_aicr_e = (ai * ciphertext) % p
+    rb = rb_aicr_e % ai
+    return rb / b    
         
-def serialize_public_key(public_key):
-    """ usage: serialize_public_key(public_key) => serialized_public_key
-        
-        Returns a saved public key, in the form of bytes. """
-    return save_data(public_key)
-    
-def deserialize_public_key(serialized_public_key):
-    """ usage: deserialize_public_key(serialized_public_key) => public_key
-        
-        Loads a saved public key, as produced by serialize_public_key. """
-    return load_data(serialized_public_key)
-    
-def test_serialized_public_key_deserialize_public_key():
-    public_key, _ = generate_keypair()
-    serialized = serialize_public_key(public_key)
-    _public_key = deserialize_public_key(serialized)
-    assert _public_key == public_key, (_public_key, public_key)
-    
 def test_exchange_key_recover_key():
     from epqcrypto.unittesting import test_key_exchange
     test_key_exchange("epqcryptokeyexchange", generate_keypair, exchange_key, recover_key, iterations=10000)
