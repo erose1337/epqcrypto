@@ -59,7 +59,7 @@ def generate_signature_request(signers_public_key, signature_key_size=32):
             
         The signing party chooses what data they sign. """                
     validation_key = bytearray(urandom(signature_key_size))    
-    signature_request = serialize_key(keyexchange.exchange_key(deserialize_key(validation_key), signers_public_key))    
+    signature_request = serialize_key(keyexchange.encapsulate_key(deserialize_key(validation_key), signers_public_key))    
     return signature_request, validation_key
                
 def sign(data, signature_request, private_key, signature_size=32):   
@@ -85,7 +85,7 @@ def generate_signature_request_on_data(signers_public_key, data, signature_key_s
         
         The signing party is committed to signing the data provided by the signature requester."""                
     validation_key = bytearray(urandom(signature_key_size))    
-    signature_request = serialize_key(keyexchange.exchange_key(deserialize_key(validation_key), signers_public_key))    
+    signature_request = serialize_key(keyexchange.encapsulate_key(deserialize_key(validation_key), signers_public_key))    
     return signature_request, validation_key, hmac(data, validation_key)
     
 def sign_requested_data(data, signature_request, private_key, tag, signature_size=32):   

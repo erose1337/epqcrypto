@@ -1,63 +1,79 @@
-from epqcrypto.utilities import random_integer, modular_inverse
+from epqcrypto.utilities import modular_inverse, random_integer
 
-P = 2162856158844985461289249749615925877431829137352992256594209856594439223948437451595264572685544280084236320535053554120005641780594461360999924859753577717547132577717151568525764429614531460013832016836541995858042528967106770950884707583431395743392711430035889618934835006665894726069789187736390533376523267
+SECURITY_LEVEL = 32
 
 def calculate_parameter_sizes(security_level):
-    """ usage: calculate_parameters_sizes(security_level) => short_inverse size, r size, s size, e size, P size
+    """ usage: calculate_parameter_sizes(security_level) => a_i_size, b_i_size, p_size
     
-        Given a target security level, designated in bytes, return appropriate parameter sizes for instantiating the trapdoor. """
-    short_inverse_size = (security_level * 2) + 1
-    p_size = short_inverse_size + security_level + 1
-    return short_inverse_size, security_level, security_level, security_level, p_size
+        Given a target security level, returns parameter sizes suitable for instantiating the cryptosystem at the desired security level. """
+    p_size = (security_level * 3) + 2  # + a few extra bytes lowers probability of decryption failure to negligible
+    a_i_size = (security_level * 2) + 1
+    b_i_size = security_level
+    return a_i_size, b_i_size, p_size
     
-def generate_private_key(short_inverse_size=65, p=P):
-    """ usage: generate_private_key(short_inverse_size=65, p=P) => private_key
+def generate_private_key(security_level=SECURITY_LEVEL):
+    """ usage: generate_private_key(security_level=SECURITY_LEVEL) => private_key
     
-        Returns 1 integer, suitable for use as a private key. """
-    short_inverse = random_integer(short_inverse_size)       
-    a = modular_inverse(short_inverse, p)
-    b = random_integer(32)
-    c = random_integer(32)    
-    return short_inverse, a, b, c
+        Returns the integer(s) that constitute a private key. """
+    a_i_size, b_i_size, p_size = calculate_parameter_sizes(security_level)  
+    while True:
+        p = random_integer(p_size)
+        a_i = random_integer(a_i_size) 
+        b_i = random_integer(b_i_size)
+        try:
+            a = modular_inverse(a_i, p)
+            b = modular_inverse(b_i, p)
+        except ValueError:
+            continue
+        else:
+            break
+    #while gcd(a_i, p) != 1 or gcd(b_i, p) != 1:
+    #    p = random_integer(p_size)
+    #    a_i = random_integer(a_i_size) 
+    #    b_i = random_integer(b_i_size) 
+    ab_i = (a_i * b_i) % p    
+    return a_i, b_i, ab_i, p
     
-def generate_public_key(private_key, r_size=32, p=P): 
-    """ usage: generate_public_key(private_key, r_size=32, p=P) => public_key
-    
-        Returns 1 integer, suitable for use as a public key. """
-    ai, a, b, c = private_key
-    public_key = ((a * b) + c) % p    
-    return public_key
+def generate_public_key(private_key):
+    """ usage: generate_public_key(private_key) => public_key
         
-def generate_keypair():
-    """ usage: generate_keypair() => public_key, private_key
+        Returns the integer(s) that constitute a public key. """
+    a_i, b_i, ab_i, p = private_key
+    a = modular_inverse(a_i, p)
+    b = modular_inverse(b_i, p)
+    return a, b
     
-        Generate a keypair; Returns 2 integers. """
-    private_key = generate_private_key()
+def generate_keypair(security_level=SECURITY_LEVEL):
+    """ usage: generate_keypair(security_level=SECURITY_LEVEL) => public_key, private_key
+        
+        Returns a public key and private key for the target security level. """
+    private_key = generate_private_key(security_level)
     public_key = generate_public_key(private_key)
     return public_key, private_key
     
-def exchange_key(public_key, s_size=32, e_size=64, p=P): 
-    """ usage: exchange_key(public_key, s_size=32, e_size=32, p=P) => ciphertext, secret
+def encapsulate_key(public_key, security_level=SECURITY_LEVEL):
+    """ usage: encapsulate_key(public_key, security_level=SECURITY_LEVEL) => ciphertext, secret
     
         Returns a ciphertext and a shared secret.
-        The ciphertext should be delivered to the holder of the associated private key, so that they may recover the shared secret. """
-    s = random_integer(s_size)  
-    ciphertext = (public_key * s) + random_integer(e_size)
-    return ciphertext % p, s
+        The ciphertext should be made available to the holder of the private key associated with public key.
+        The secret may be used to create a secured communications channel with that user. """
+    s1 = random_integer(security_level)
+    s2 = random_integer(security_level)
+    a, b = public_key
+    ciphertext = ((a * s1) + (b * s2))
+    return ciphertext, s2
     
-def recover_key(ciphertext, private_key, p=P):
-    """ usage: recover_key(ciphertext, private_key, p=P) => secret
-    
-        Returns a shared secret in the form of a random integer. """
-    ai, a, b, c = private_key
-    rb_aicr_e = (ai * ciphertext) % p
-    rb = rb_aicr_e % ai
-    return rb / b    
+def recover_key(ciphertext, private_key):
+    """ usage: recover_key(ciphertext, private_key) => secret
         
-def test_exchange_key_recover_key():
+        Returns a shared secret. """
+    a_i, b_i, ab_i, p = private_key
+    return ((ciphertext * ab_i) % p) / a_i
+    
+def unit_test():
     from epqcrypto.unittesting import test_key_exchange
-    test_key_exchange("epqcryptokeyexchange", generate_keypair, exchange_key, recover_key, iterations=10000)
+    test_key_exchange("twoshortinverses", generate_keypair, encapsulate_key, recover_key, iterations=10000)
     
 if __name__ == "__main__":
-    test_exchange_key_recover_key()
-           
+    unit_test()
+    

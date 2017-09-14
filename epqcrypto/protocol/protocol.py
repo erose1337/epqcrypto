@@ -36,7 +36,7 @@ class Key_Exchange_Protocol(object):
         self.confirmation_code_size = len(hmac('', ''))              
         
     def initiate_exchange(self, others_public_key):
-        challenge, secret = keyexchange.exchange_key(others_public_key)
+        challenge, secret = keyexchange.encapsulate_key(others_public_key)
         self.secret1 = secret        
         ephemeral_public_key, self.ephemeral_private_key = keyexchange.generate_keypair()
         return challenge, self.public_key, ephemeral_public_key
@@ -44,8 +44,8 @@ class Key_Exchange_Protocol(object):
     def responder_establish_secret(self, ciphertext, public_key, ephemeral_public_key):       
         secret1 = keyexchange.recover_key(ciphertext, self.private_key)        
         
-        ciphertext2, secret2 = keyexchange.exchange_key(public_key)
-        ciphertext3, secret3 = keyexchange.exchange_key(ephemeral_public_key)
+        ciphertext2, secret2 = keyexchange.encapsulate_key(public_key)
+        ciphertext3, secret3 = keyexchange.encapsulate_key(ephemeral_public_key)
         
         keying_material = utilities.integer_to_bytes(secret1 ^ secret2 ^ secret3, self.secret_size)       
         confirmation_code = self.derive_keys(keying_material)

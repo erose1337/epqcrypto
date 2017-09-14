@@ -88,11 +88,11 @@ def test_symmetric_encrypt_decrypt(algorithm_name, generate_key, encrypt, decryp
     print("Ciphertext size: {}".format(size_in_bits(encrypt(random_integer(plaintext_size), key))))
     print("{} unit test passed".format(algorithm_name))
 
-def test_exchange_key_recover_key_time(iterations, exchange_key, recover_key, public_key, private_key, key_size=32):    
+def test_encapsulate_key_recover_key_time(iterations, encapsulate_key, recover_key, public_key, private_key, key_size=32):    
     print("Exchanging {} {}-byte messages...".format(iterations, key_size))            
     before = default_timer()
     for count in range(iterations):                     
-        ciphertext, key = exchange_key(public_key)
+        ciphertext, key = encapsulate_key(public_key)
     after = default_timer()
     print("Time required: {}".format(after - before))
     
@@ -103,7 +103,7 @@ def test_exchange_key_recover_key_time(iterations, exchange_key, recover_key, pu
     after = default_timer()
     print("Time required: {}".format(after - before))        
     
-def test_key_exchange(algorithm_name, generate_keypair, exchange_key, recover_key, 
+def test_key_exchange(algorithm_name, generate_keypair, encapsulate_key, recover_key, 
                       iterations=1024):
     print("Beginning {} unit test...".format(algorithm_name))
     print("Generating keypair...")
@@ -112,13 +112,13 @@ def test_key_exchange(algorithm_name, generate_keypair, exchange_key, recover_ke
     
     print("Validating correctness...")
     for count in range(iterations):
-        ciphertext, key = exchange_key(public_key)
+        ciphertext, key = encapsulate_key(public_key)
         _key = recover_key(ciphertext, private_key)
         if _key != key:
             raise BaseException("Unit test failed")
     print("...done")
     
-    test_exchange_key_recover_key_time(iterations, exchange_key, recover_key, public_key, private_key)
+    test_encapsulate_key_recover_key_time(iterations, encapsulate_key, recover_key, public_key, private_key)
     
     public_sizes = determine_key_size(public_key)
     private_sizes = determine_key_size(private_key)

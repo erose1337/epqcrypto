@@ -16,7 +16,7 @@ def encrypt(data, public_key, nonce=None, additional_data='', algorithm="sha512"
         algorithm determines which hash algorithm to use with HMAC
         data/nonce/additional_data should be bytes or bytearray
         Cryptogram can be decrypted by the holder of the associated private key"""        
-    encrypted_key, key = keyexchange.exchange_key(public_key, key_size)    
+    encrypted_key, key = keyexchange.encapsulate_key(public_key, key_size)    
     nonce = nonce if nonce is not None else bytearray(random_bytes(nonce_size))
     return aead.encrypt(data, serialize_int(key), nonce, save_data(encrypted_key, additional_data), algorithm)
     

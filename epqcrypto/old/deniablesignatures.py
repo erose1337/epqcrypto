@@ -8,7 +8,7 @@ def generate_keypair():
     
 def generate_signing_key(signers_public_key, signature_key_size=32):
     signing_key = keyexchange.generate_random_secret(signature_key_size)
-    return keyexchange.exchange_key(signing_key, signers_public_key), signing_key
+    return keyexchange.encapsulate_key(signing_key, signers_public_key), signing_key
     
 def retrieve_signing_key(encrypted_signing_key, signers_private_key):
     return keyexchange.recover_key(encrypted_signing_key, signers_private_key)
