@@ -170,3 +170,36 @@ def test_sign_verify(algorithm_name, generate_keypair, sign, verify,
     print("(sizes are in bits)")
     print("{} unit test passed".format(algorithm_name))
     
+def test_key_agreement_time(iterations, key_agreement, generate_keypair, key_size=32):        
+    if iterations == 0:
+        return None    
+    print("Agreeing upon {} {}-byte keys...".format(iterations, key_size))                
+    before = default_timer()
+    for count in range(iterations):                     
+        public_key, private_key = generate_keypair()
+        key = key_agreement(public_key, private_key)
+    after = default_timer()
+    print("Time required: {}".format(after - before))   
+    
+def test_key_agreement(algorithm_name, generate_keypair, key_agreement, 
+                       iterations=1024, key_size=32):
+    print("Beginning {} unit test...".format(algorithm_name))               
+    print("Validating correctness...")    
+    for count in range(iterations):
+        public_key, private_key = generate_keypair()
+        public_key2, private_key2 = generate_keypair()
+        key = key_agreement(public_key2, private_key)
+        _key = key_agreement(public_key, private_key2)
+        assert key == _key, (count, key, _key)
+    print("...done")
+    
+    test_key_agreement_time(iterations, key_agreement, generate_keypair, key_size=key_size)
+    
+    public_sizes = determine_key_size(public_key)
+    private_sizes = determine_key_size(private_key)
+    print("Public key size : {}".format(sum(public_sizes)))
+    print("Private key size: {}".format(sum(private_sizes)))
+    print("Key size : {}".format(sum(determine_key_size(key))))
+    print("(sizes are in bits)")
+    print("{} unit test passed".format(algorithm_name))
+        
