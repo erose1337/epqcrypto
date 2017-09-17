@@ -16,7 +16,7 @@ def generate_private_key(security_level=SECURITY_LEVEL):
     """ usage: generate_private_key(security_level=SECURITY_LEVEL) => private_key
         
         Returns the integer(s) that constitute a private key. """
-    s = random_integer(security_level)
+    s = random_integer(security_level * 2)
     return s
     
 def generate_public_key(private_key, points=POINTS, security_level=SECURITY_LEVEL):
@@ -25,9 +25,10 @@ def generate_public_key(private_key, points=POINTS, security_level=SECURITY_LEVE
                                    
         Returns the integer(s) that constitute a public key. """
     s = private_key
+    s2 = random_integer(security_level)
     e = random_integer(security_level + (security_level / 2))
     a, b = points
-    return ((a * (s ** 2)) + (b * s) + e)
+    return (a * s) + (b * s2) + e
     
 def generate_keypair(security_level=SECURITY_LEVEL, points=POINTS):
     """ usage: generate_keypair(security_level=SECURITY_LEVEL, points=POINTS) => public_key, private_key
@@ -41,9 +42,8 @@ def key_agreement(public_key, private_key, shift=920):
     """ usage: key_agreement(public_key, private_key, shift=910):
         
         Returns a shared secret in the form of an integer.
-        The shift argument must be modified if the security_level has been altered from the default. """
-    s = private_key
-    approximate_shared_point = ((s ** 2) * public_key)
+        The shift argument must be modified if the security_level has been altered from the default. """    
+    approximate_shared_point = (private_key * public_key)
     output = approximate_shared_point >> shift
     if not output:
         raise ValueError("Shared secret was 0")
