@@ -13,6 +13,10 @@ The code is structured into various less than experimental modules:
     
 As well as several experimental modules:
         
-    - key exchange algorithm
-    - a basic secure communications protocol built using the rest of the tools    
+    - asymmetric:
+        - epq_kem: key encapsulation mechanism
+        - epq_pke: public key encryption
+        - epq_bka: backdoored key agreement 
+    - epq_she: somewhat homomorphic encryption (over finite fields)
+    - a basic secure communications protocol
         
