@@ -36,7 +36,7 @@
 from os import urandom
 from math import log
 
-import epqcrypto.asymmetric.keyexchange
+import epqcrypto.asymmetric.kem
 from epqcrypto.symmetric.hashing import hmac, hash_function
 from epqcrypto.utilities import integer_to_bytes, bytes_to_integer, xor_subroutine
 

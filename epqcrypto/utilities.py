@@ -13,11 +13,11 @@ def bytes_to_integer(data):
     return output
     
 def serialize_int(number):
-    return str(number)
-
-def deserialize_int(serialized_int):
-    return int(serialized_int)
+    return integer_to_bytes(number, int((log(number) + 1) / 8))
     
+def deserialize_int(serialized_int):
+    return bytes_to_integer(serialized_int)
+        
 def xor_subroutine(bytearray1, bytearray2): 
     size = min(len(bytearray1), len(bytearray2))    
     for index in range(size):

@@ -20,7 +20,7 @@ def deserialize_public_key(serialized_public_key):
     return load_data(serialized_public_key)
     
 def test_serialized_public_key_deserialize_public_key():
-    from epqcrypto.asymmetric.keyexchange import generate_keypair
+    from epqcrypto.asymmetric.kem import generate_keypair
     public_key, _ = generate_keypair()
     serialized = serialize_public_key(public_key)
     _public_key = deserialize_public_key(serialized)

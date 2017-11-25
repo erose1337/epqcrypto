@@ -19,7 +19,7 @@ ciphertext1 := encrypt(secret1, public_keyb) a -----ephemeral public key -- publ
    adversary obtains secret2 by decrypting with private key b
    adversary cannot obtain secret3 because they do not have the ephemeral private key
        - adversary cannot obtain session keys"""
-import epqcrypto.asymmetric.keyexchange as keyexchange
+import epqcrypto.asymmetric.kem as keyexchange
 import epqcrypto.utilities as utilities
 from epqcrypto.symmetric.hashing import hmac, hash_function, hkdf
 from epqcrypto.symmetric.aead import encrypt, decrypt

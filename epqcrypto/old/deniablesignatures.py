@@ -1,6 +1,6 @@
 from os import urandom
 
-import epqcrypto.asymmetric.keyexchange
+import epqcrypto.asymmetric.kem
 from epqcrypto.symmetric.hashing import hmac, hash_function
 
 def generate_keypair():

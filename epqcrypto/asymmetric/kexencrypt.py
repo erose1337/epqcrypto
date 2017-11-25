@@ -1,23 +1,23 @@
 """ Provides authenticated encryption and decryption functions using keyexchange and aead. 
     Turns keyexchange into public key encryption (+ authenticated associated data). """    
-import epqcrypto.asymmetric.keyexchange as keyexchange
+import epqcrypto.asymmetric.kem as keyexchange
 import epqcrypto.symmetric.aead as aead
 from epqcrypto.persistence import save_data, load_data
 from epqcrypto.utilities import random_bytes, serialize_int
 
 __all__ = ("encrypt", "decrypt")           
 
-def encrypt(data, public_key, nonce=None, additional_data='', algorithm="sha512", key_size=32, nonce_size=32):
+def encrypt(data, public_key, nonce=None, additional_data='', algorithm="sha512", nonce_size=32):
     """ usage: encrypt(data, public_key, nonce=None, additional_data='',
-                       algorithm="sha512", key_size=32, nonce_size=32) => cryptogram
+                       algorithm="sha512", key_size=keyexchange.trapdoor.S_SIZE, nonce_size=32) => cryptogram
         
         Encrypts and authenticates data using a randomly generated key and nonce.
         Authenticates but does not encrypt additional_data
         algorithm determines which hash algorithm to use with HMAC
         data/nonce/additional_data should be bytes or bytearray
         Cryptogram can be decrypted by the holder of the associated private key"""        
-    encrypted_key, key = keyexchange.encapsulate_key(public_key, key_size)    
-    nonce = nonce if nonce is not None else bytearray(random_bytes(nonce_size))
+    encrypted_key, key = keyexchange.encapsulate_key(public_key)        
+    nonce = nonce if nonce is not None else bytearray(random_bytes(nonce_size))    
     return aead.encrypt(data, serialize_int(key), nonce, save_data(encrypted_key, additional_data), algorithm)
     
 def decrypt(cryptogram, private_key):
@@ -28,7 +28,7 @@ def decrypt(cryptogram, private_key):
         Otherwise, returns None, None."""          
     header, nonce, key_and_additional_data, data, tag = load_data(cryptogram)
     encrypted_key, _additional_data = load_data(key_and_additional_data)
-    key = serialize_int(keyexchange.recover_key(encrypted_key, private_key))
+    key = serialize_int(keyexchange.recover_key(encrypted_key, private_key))    
     plaintext, additional_data = aead.decrypt(cryptogram, key)
     if plaintext is not None:
         return plaintext, _additional_data

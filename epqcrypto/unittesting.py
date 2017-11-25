@@ -4,9 +4,15 @@ from epqcrypto.utilities import random_integer, size_in_bits
 
 def test_for_homomorphism(ciphertext1, ciphertext2, decrypt, key, m1, m2):    
     if decrypt(ciphertext1 + ciphertext2, key) == m1 + m2:
-        print("Ciphertexts support addition: D(E(m1) + E(m2)) == m1 + m2")
-    if decrypt(ciphertext1 * ciphertext2, key) == m1 * m2:
-        print("Ciphertexts support multiplication: D(E(m1) * E(m2)) == m1 * m2")
+        print("Ciphertexts support addition: D(E(m1) + E(m2)) == m1 + m2")        
+        
+    try:
+        if decrypt(ciphertext1 * ciphertext2, key, depth=2) == m1 * m2:
+            print("Ciphertexts support multiplication: D(E(m1) * E(m2)) == m1 * m2")
+    except TypeError:
+        if decrypt(ciphertext1 * ciphertext2, key) == m1 * m2:
+            print("Ciphertexts support multiplication: D(E(m1) * E(m2)) == m1 * m2") 
+            
     if decrypt(ciphertext1 ^ ciphertext2, key) == m1 ^ m2:
         print("Ciphertexts support XOR: D(E(m1) ^ E(m2)) == m1 ^ m2")
     if decrypt(ciphertext1 & ciphertext2, key) == m1 & m2:
@@ -22,16 +28,16 @@ def determine_key_size(key):
                 for _item in item:
                     sizes.append(size_in_bits(_item))
             except TypeError:
-                sizes.append(size_in_bits(item or 1))
+                sizes.append(size_in_bits(item))    
     return sizes
     
-def test_encrypt_decrypt_time(iterations, encrypt, decrypt, public_key, private_key, plaintext_size):    
+def test_encrypt_decrypt_time(iterations, encrypt, decrypt, public_key, private_key, plaintext_size):  
+    print("Beginning encrypt/decrypt time test")
     print("Encrypting {} {}-byte messages...".format(iterations, plaintext_size))    
-    message = int('11111111' * plaintext_size, 2)#
+    message = int('11111111' * plaintext_size, 2)
     
     before = default_timer()
-    for count in range(iterations):                 
-        #message = random_integer(plaintext_size)
+    for count in range(iterations):                         
         ciphertext = encrypt(message, public_key)                
     after = default_timer()
     print("Time required: {}".format(after - before))
@@ -42,15 +48,19 @@ def test_encrypt_decrypt_time(iterations, encrypt, decrypt, public_key, private_
         plaintext = decrypt(ciphertext, private_key)       
     after = default_timer()
     print("Time required: {}".format(after - before))
-    
-    assert plaintext == message, '\n'.join(str(item) for item in ('\n', plaintext, message))
-    
+            
 def test_asymmetric_encrypt_decrypt(algorithm_name, generate_keypair, encrypt, decrypt,
                                     iterations=1024, plaintext_size=32):    
-    print("Beginning {} unit test".format(algorithm_name))
-    print("Generating keypair...")
-    public_key, private_key = generate_keypair()
-    print("...done.")    
+    print("Beginning {} unit test".format(algorithm_name))           
+    print("Validating correctness...")
+    for count in range(iterations):
+        public_key, private_key = generate_keypair()
+        message = random_integer(plaintext_size)
+        ciphertext = encrypt(message, public_key)
+        plaintext = decrypt(ciphertext, private_key)
+        if plaintext != message:
+            raise Warning("Unit test failed after {} successful tests".format(count))
+    print("...done")
     
     test_encrypt_decrypt_time(iterations, encrypt, decrypt, public_key, private_key, plaintext_size)
     
@@ -88,11 +98,13 @@ def test_symmetric_encrypt_decrypt(algorithm_name, generate_key, encrypt, decryp
     print("Ciphertext size: {}".format(size_in_bits(encrypt(random_integer(plaintext_size), key))))
     print("{} unit test passed".format(algorithm_name))
 
-def test_encapsulate_key_recover_key_time(iterations, encapsulate_key, recover_key, public_key, private_key, key_size=32):    
-    print("Exchanging {} {}-byte messages...".format(iterations, key_size))            
+def test_exchange_key_recover_key_time(iterations, exchange_key, recover_key, public_key, private_key, key_size=32):        
+    if iterations == 0:
+        return None    
+    print("Exchanging {} {}-byte keys...".format(iterations, key_size))            
     before = default_timer()
     for count in range(iterations):                     
-        ciphertext, key = encapsulate_key(public_key)
+        ciphertext, key = exchange_key(public_key)
     after = default_timer()
     print("Time required: {}".format(after - before))
     
@@ -103,41 +115,42 @@ def test_encapsulate_key_recover_key_time(iterations, encapsulate_key, recover_k
     after = default_timer()
     print("Time required: {}".format(after - before))        
     
-def test_key_exchange(algorithm_name, generate_keypair, encapsulate_key, recover_key, 
-                      iterations=1024):
+def test_key_exchange(algorithm_name, generate_keypair, exchange_key, recover_key, 
+                      iterations=1024, key_size=32):
     print("Beginning {} unit test...".format(algorithm_name))
-    print("Generating keypair...")
-    public_key, private_key = generate_keypair()
-    print("...done")
+    #print("Generating keypair...")
+    #
+    #print("...done")
     
     print("Validating correctness...")
     for count in range(iterations):
-        ciphertext, key = encapsulate_key(public_key)
+        public_key, private_key = generate_keypair()
+        ciphertext, key = exchange_key(public_key)
         _key = recover_key(ciphertext, private_key)
         if _key != key:
-            raise BaseException("Unit test failed")
+            raise BaseException("Unit test failed (after {} successful exchanges)".format(count))
     print("...done")
     
-    test_encapsulate_key_recover_key_time(iterations, encapsulate_key, recover_key, public_key, private_key)
+    test_exchange_key_recover_key_time(iterations, exchange_key, recover_key, public_key, private_key, key_size)
     
     public_sizes = determine_key_size(public_key)
     private_sizes = determine_key_size(private_key)
     print("Public key size : {}".format(sum(public_sizes)))
     print("Private key size: {}".format(sum(private_sizes)))
-    print("Ciphertext size : {}".format(size_in_bits(ciphertext)))
+    print("Ciphertext size : {}".format(size_in_bits(exchange_key(public_key)[0])))
     print("(sizes are in bits)")
     print("{} unit test passed".format(algorithm_name))
     
 def test_sign_verify_time(iterations, sign, verify, public_key, private_key, message_size=32):    
     message = random_integer(message_size)
-    print("Signing {} {}-byte messages...".format(iterations, message_size))         
+    print("Signing {} {}-bit messages...".format(iterations, message_size * 8))         
     before = default_timer()
     for count in range(iterations):                     
         signature = sign(message, private_key)
     after = default_timer()
     print("Time required: {}".format(after - before))
     
-    print("Verifying {} {}-byte signatures...".format(iterations, sum(determine_key_size(signature)) / 8))
+    print("Verifying {} {}-bit signatures...".format(iterations, sum(determine_key_size(signature))))
     before = default_timer()
     for count in range(iterations):
         valid_flag = verify(signature, message, public_key)       
@@ -156,19 +169,18 @@ def test_sign_verify(algorithm_name, generate_keypair, sign, verify,
         message = random_integer(message_size)
         signature = sign(message, private_key)
         if not verify(signature, message, public_key):        
-            raise BaseException("Unit test failed")
+            raise BaseException("Unit test failed after {} successful signature verifications".format(count))
     print("...done")
     
-    test_sign_verify_time(iterations, sign, verify, public_key, private_key)
+    test_sign_verify_time(iterations, sign, verify, public_key, private_key, message_size)
     
     public_sizes = determine_key_size(public_key)
     private_sizes = determine_key_size(private_key)
-    signature_sizes = determine_key_size(signature)
     print("Public key size : {}".format(sum(public_sizes)))
     print("Private key size: {}".format(sum(private_sizes)))
-    print("Signature size : {}".format(sum(signature_sizes)))
+    print("Signature size : {}".format(sum(determine_key_size(signature))))
     print("(sizes are in bits)")
-    print("{} unit test passed".format(algorithm_name))
+    print("{} unit test passed".format(algorithm_name))    
     
 def test_key_agreement_time(iterations, key_agreement, generate_keypair, key_size=32):        
     if iterations == 0:
@@ -183,14 +195,22 @@ def test_key_agreement_time(iterations, key_agreement, generate_keypair, key_siz
     
 def test_key_agreement(algorithm_name, generate_keypair, key_agreement, 
                        iterations=1024, key_size=32):
-    print("Beginning {} unit test...".format(algorithm_name))               
+    print("Beginning {} unit test...".format(algorithm_name))
+    #print("Generating {} keypairs...".format(iterations))    
+    #before = default_timer()
+    #for count in range(iterations):
+    #    public_key, private_key = generate_keypair()        
+    #after = default_timer()
+    #print("...done")
+    #print("Time required: {}".format(after - before))
+               
     print("Validating correctness...")    
     for count in range(iterations):
         public_key, private_key = generate_keypair()
         public_key2, private_key2 = generate_keypair()
         key = key_agreement(public_key2, private_key)
         _key = key_agreement(public_key, private_key2)
-        assert key == _key, (count, key, _key)
+        assert key and key == _key, (count, key, _key)
     print("...done")
     
     test_key_agreement_time(iterations, key_agreement, generate_keypair, key_size=key_size)
@@ -202,4 +222,4 @@ def test_key_agreement(algorithm_name, generate_keypair, key_agreement,
     print("Key size : {}".format(sum(determine_key_size(key))))
     print("(sizes are in bits)")
     print("{} unit test passed".format(algorithm_name))
-        
+    
