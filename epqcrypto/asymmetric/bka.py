@@ -93,7 +93,8 @@ def unit_test():
             raise Warning("Unit test failed after {} successfully compromised key exchanges".format(count))           
        
     from epqcrypto.unittesting import test_key_agreement
-    test_key_agreement("epq_bka", generate_keypair, key_agreement, iterations=10000)  
+    from epqcrypto.asymmetric.deterministickeygen import generate_keypair as gen_keypair
+    test_key_agreement("epq_bka", gen_keypair, key_agreement, iterations=10000)  
     
 if __name__ == "__main__":
     unit_test()

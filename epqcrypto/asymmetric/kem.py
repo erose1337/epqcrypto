@@ -19,6 +19,7 @@ def recover_key(ciphertext, private_key, q=trapdoor.Q, e_shift=trapdoor.E_SHIFT,
     
 def unit_test():
     from epqcrypto.unittesting import test_key_exchange
+    from epqcrypto.asymmetric.deterministickeygen import generate_keypair
     test_key_exchange("epq_kem(slidey2)", generate_keypair, encapsulate_key, recover_key, iterations=10000, key_size=trapdoor.SECURITY_LEVEL)
     
 if __name__ == "__main__":

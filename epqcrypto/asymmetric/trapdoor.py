@@ -36,7 +36,7 @@ def generate_private_key(inverse_size=INVERSE_SIZE, k_size=K_SIZE, q=Q, shift=SH
     return inverse, q + k
     
 def generate_public_key(private_key, q=Q, a_shift=A_SHIFT):
-    """ usage: generate_public_key(private_key, q=Q, k_size=K_SIZE) => public_key
+    """ usage: generate_public_key(private_key, q=Q, a_shift=A_SHIFT) => public_key
         
         Returns the integer that constitutes a public key. """
     ai, q_k = private_key    
@@ -44,8 +44,8 @@ def generate_public_key(private_key, q=Q, a_shift=A_SHIFT):
     return (a >> a_shift) << a_shift
     
 def generate_keypair(inverse_size=INVERSE_SIZE, k_size=K_SIZE, q=Q, shift=SHIFT):
-    """ usage: generate_keypair(invers_size=INVERSE_SIZE, 
-                                q_size=Q_SIZE, k_size=K_SIZE) => public_key, private_key
+    """ usage: generate_keypair(inverse_size=INVERSE_SIZE, k_size=K_SIZE, 
+                                q=Q, shift=SHIFT) => public_key, private_key
                                 
         Returns a public key and a private key. """    
     private_key = generate_private_key(inverse_size, k_size, q, shift)
@@ -53,13 +53,13 @@ def generate_keypair(inverse_size=INVERSE_SIZE, k_size=K_SIZE, q=Q, shift=SHIFT)
     return public_key, private_key
     
 def public_key_operation(public_key, s, e_shift=E_SHIFT, q=Q, mask=MASK):
-    """ usage: encapsulate_key(public_key, s_size=S_SIZE, e_shift=E_SHIFT) => ciphertext, key
+    """ usage: encapsulate_key(public_key, s, e_shift=E_SHIFT, q=Q, mask=MASK) => ciphertext, key
     
         Returns a ciphertext integer. """        
     return ((public_key * s) % q) >> e_shift
     
 def private_key_operation(ciphertext, private_key, q=Q, e_shift=E_SHIFT, mask=MASK):
-    """ usage: recover_key(ciphertext, private_key) => plaintext value
+    """ usage: recover_key(ciphertext, private_key, q=Q, e_shift=E_SHIFT, mask=MASK) => plaintext value
         
         Returns the integer that constitutes a plaintext value. """
     ai, q_k = private_key

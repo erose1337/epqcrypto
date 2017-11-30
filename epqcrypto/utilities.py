@@ -1,6 +1,7 @@
 from math import log
 from os import urandom as random_bytes
 from hmac import compare_digest as constant_time_comparison
+from hashlib import sha512
 
 def integer_to_bytes(integer, _bytes):
     return bytearray((integer >> (8 * (_bytes - 1 - byte))) & 255 for byte in range(_bytes))
@@ -108,5 +109,14 @@ def is_prime(n, _mrpt_num_trials=10): # from https://rosettacode.org/wiki/Miller
  
     return True # no base tested showed n as composite
     
-        
-        
+def deterministic_random(amount, seed, nonce, hash_function=sha512):
+    output = bytearray()
+    counter = 0    
+    size = len(output)
+    while size < amount:
+        output += hash_function(seed + nonce + bytes(counter)).digest()[:amount - size]
+        counter += 1
+        size = len(output)        
+    assert len(output) == amount
+    return output
+                

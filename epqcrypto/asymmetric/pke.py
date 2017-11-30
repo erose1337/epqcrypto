@@ -24,6 +24,7 @@ def decrypt(ciphertext, private_key, q=trapdoor.Q, e_shift=trapdoor.E_SHIFT, mas
     
 def unit_test():
     from epqcrypto.unittesting import test_asymmetric_encrypt_decrypt
+    from epqcrypto.asymmetric.deterministickeygen import generate_keypair
     test_asymmetric_encrypt_decrypt("epq_pke(slidey2)", generate_keypair, encrypt, decrypt, iterations=10000, plaintext_size=M_SIZE)
     
 if __name__ == "__main__":
