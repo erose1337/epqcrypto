@@ -10,7 +10,7 @@ There currently is no form of PKI - users require some way to obtain the peers p
 Some kind of forward secrecy in 1 round trip:
 
 ciphertext1 := encrypt(secret1, public_keyb) a -----ephemeral public key -- public keya ---ciphertext1 ---> b obtain secret1 from ciphertext
-                                             a <------- ciphertext2, ciphertext3, confirmation code ------  b ciphertext2: encrypt(secret2, public keya); 
+                                             a <------- ciphertext2, ciphertext3, confirmation code ------  b ciphertext2 := encrypt(secret2, public keya); 
                                                                                                               ciphertext3 := encrypt(secret3, ephemeral public key)
                                                                                                               confirmation code := hmac(string, session_secret)
  session keys: hkdf(secret1 XOR secret2 XOR secret3)

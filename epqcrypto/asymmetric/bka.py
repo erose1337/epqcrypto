@@ -70,7 +70,9 @@ def generate_private_key(s_size=S_SIZE):
 def generate_public_key(private_key, a=A, modulus=MODULUS, e_size=E_SIZE):
     s = private_key
     e = random_integer(e_size)
-    return ((a * s) + e) % modulus
+    from math import log
+    print log(a, 2), log(s, 2), log(modulus, 2)
+    return (((a * s) % modulus) >> (e_size * 8)) #<< (e_size * 8)
     
 def generate_keypair(a=A, modulus=MODULUS, s_size=S_SIZE, e_size=E_SIZE):
     private_key = generate_private_key(s_size)
@@ -78,23 +80,45 @@ def generate_keypair(a=A, modulus=MODULUS, s_size=S_SIZE, e_size=E_SIZE):
     return public_key, private_key
     
 def key_agreement(ciphertext, private_key, modulus=MODULUS, shift=SHIFT):
-    return ((ciphertext * private_key) % modulus) >> shift
-        
+    return (((ciphertext << (E_SIZE * 8)) * private_key) % modulus) >> shift
+                   
+def generate_keypair_backdoor_free(a1, a2, modulus=MODULUS, s_size=S_SIZE, e_size=E_SIZE):
+    a = (a1 * a2) % modulus
+    return generate_keypair(a, modulus, s_size, e_size)
+    
 def unit_test():                         
-    for count in range(10000):
-        pub1, priv1 = generate_keypair()
-        pub2, priv2 = generate_keypair()
-        share = key_agreement(pub2, priv1)
+    #for count in range(10000):
+    #    pub1, priv1 = generate_keypair()
+    #    pub2, priv2 = generate_keypair()
+    #    share = key_agreement(pub2, priv1)
+    #    
+    #    backdoor_priv1 = backdoor_recover_key(pub1, BACKDOOR_KEY)
+    #    assert backdoor_priv1 == priv1, (backdoor_priv1, priv1)
+    #    backdoor_share = key_agreement(pub2, backdoor_priv1)
+    #    if backdoor_share != share:
+    #        raise Warning("Unit test failed after {} successfully compromised key exchanges".format(count))           
+    #else:
+    #    print("Backdoor unit test complete")
+    #    
+    #a_size = P_SIZE
+    #for count in range(10000):
+    #    a1 = random_integer(a_size)
+    #    a2 = A 
+    #    pub1, priv1 = generate_keypair_backdoor_free(a1, a2)
+    #    pub2, priv2 = generate_keypair_backdoor_free(a1, a2)
+    #    share1 = key_agreement(pub1, priv2)
+    #    share2 = key_agreement(pub2, priv1)
+    #    assert share1 == share2
+    #    
+    #    backdoor_priv1 = backdoor_recover_key(pub1, BACKDOOR_KEY)
+    #    backdoor_share = key_agreement(pub2, backdoor_priv1)
+    #    if backdoor_share == share1:
+    #        raise Warning("Countermeasure failed to prevent backdoor after {} secure key exchanges".format(count))
+    #else:
+    #    print("Backdoor free unit test complete")
         
-        backdoor_priv1 = backdoor_recover_key(pub1, BACKDOOR_KEY)
-        assert backdoor_priv1 == priv1, (backdoor_priv1, priv1)
-        backdoor_share = key_agreement(pub2, backdoor_priv1)
-        if backdoor_share != share:
-            raise Warning("Unit test failed after {} successfully compromised key exchanges".format(count))           
-       
-    from epqcrypto.unittesting import test_key_agreement
-    from epqcrypto.asymmetric.deterministickeygen import generate_keypair as gen_keypair
-    test_key_agreement("epq_bka", gen_keypair, key_agreement, iterations=10000)  
+    from epqcrypto.unittesting import test_key_agreement    
+    test_key_agreement("epq_bka", generate_keypair, key_agreement, iterations=10000)  
     
 if __name__ == "__main__":
     unit_test()

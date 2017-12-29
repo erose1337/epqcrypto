@@ -1,4 +1,6 @@
 # create deterministic fixed keys according to the specified parameter sizes
+raise NotImplementedError("module not complete")
+
 from hashlib import sha512
 
 from epqcrypto.utilities import deterministic_random, bytes_to_integer, modular_inverse

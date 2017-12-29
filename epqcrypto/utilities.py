@@ -1,3 +1,5 @@
+import random
+
 from math import log
 from os import urandom as random_bytes
 from hmac import compare_digest as constant_time_comparison
