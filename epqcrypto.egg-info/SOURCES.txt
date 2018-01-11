@@ -16,7 +16,6 @@ epqcrypto/asymmetric/kexencrypt.py
 epqcrypto/asymmetric/pke.py
 epqcrypto/asymmetric/serialization.py
 epqcrypto/asymmetric/she.py
-epqcrypto/asymmetric/simpletest.py
 epqcrypto/asymmetric/trapdoor.py
 epqcrypto/protocol/__init__.py
 epqcrypto/protocol/protocol.py

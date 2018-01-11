@@ -2,7 +2,7 @@ from math import log
 
 from epqcrypto.utilities import modular_inverse, random_integer, big_prime
 
-__all__ = ["generate_paramter_sizes", "generate_modulus_Q", "generate_private_key", "generate_public_key",
+__all__ = ["generate_parameter_sizes", "generate_modulus_Q", "generate_private_key", "generate_public_key",
            "generate_keypair", "public_key_operation", "private_key_operation"]
            
 SECURITY_LEVEL = 32
@@ -39,7 +39,7 @@ def generate_private_key(inverse_size=INVERSE_SIZE, k_size=K_SIZE, q=Q, shift=SH
         inverse = random_integer(inverse_size) << shift
         k = random_integer(k_size)
         try:
-            modular_inverse(inverse, q + k)
+            modular_inverse(inverse, q ^ k)
         except ValueError:
             continue
         else:
@@ -74,5 +74,5 @@ def private_key_operation(ciphertext, private_key, q=Q, e_shift=E_SHIFT, mask=MA
         
         Returns the integer that constitutes a plaintext value. """
     inverse, k = private_key       
-    return (((ciphertext << e_shift) * inverse) % (q + k)) & mask
+    return (((ciphertext << e_shift) * inverse) % (q ^ k)) & mask
    
