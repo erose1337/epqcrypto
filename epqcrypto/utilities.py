@@ -122,3 +122,6 @@ def deterministic_random(amount, seed, nonce, hash_function=sha512):
     assert len(output) == amount
     return output
                 
+def modular_subtraction(x, y, modulus):
+    return (modulus + (x - y)) % modulus
+    

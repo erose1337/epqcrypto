@@ -1,7 +1,6 @@
 """ epq_she - Somewhat Homomorphic Encryption (symmetric encryption)
-Effectively equivalent to the algoritm presented in Fully Homomorphic Encryption Over The Integers, except performed over finite fields instead.
+Effectively equivalent to the algorithm presented in Fully Homomorphic Encryption Over The Integers, except performed over finite fields (ring?) instead.
 (Uses short inverse only, Does not use noisy modulus or trapdoor.py)
-Can be used to instantiate a public key scheme.
 
 public parameters:
     P = big_prime(prime_size)

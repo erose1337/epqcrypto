@@ -6,26 +6,17 @@ __all__ = ["generate_parameter_sizes", "generate_keypair", "encrypt", "decrypt"]
 
 generate_parameter_sizes = trapdoor.generate_parameter_sizes
 generate_keypair = trapdoor.generate_keypair
-M_SIZE = trapdoor.SECURITY_LEVEL
-ARMOR_SIZE = trapdoor.S_SIZE - M_SIZE
 
-def encrypt(m, public_key, armor_size=ARMOR_SIZE, e_shift=trapdoor.E_SHIFT, q=trapdoor.Q):
-    s = random_integer(trapdoor.S_SIZE)
-    shift = trapdoor.SECURITY_LEVEL * 8
-    s >>= shift
-    s <<= shift
-    padded_m = m | s
-    ciphertext = trapdoor.public_key_operation(public_key, padded_m, e_shift, q)        
-    return ciphertext
+def encrypt(m, public_key, r_size=trapdoor.R_SIZE, q=trapdoor.Q):
+    return trapdoor.public_key_operation(m, public_key, r_size, q)
     
-def decrypt(ciphertext, private_key, q=trapdoor.Q, e_shift=trapdoor.E_SHIFT, mask=trapdoor.MASK):
-    m = trapdoor.private_key_operation(ciphertext, private_key, q, e_shift, mask)    
-    return m
+def decrypt(ciphertext, private_key, s_mask=trapdoor.S_MASK, q=trapdoor.Q):
+    return trapdoor.private_key_operation(ciphertext, private_key, s_mask, q)
     
 def unit_test():
     from epqcrypto.unittesting import test_asymmetric_encrypt_decrypt
    # from epqcrypto.asymmetric.deterministickeygen import generate_keypair
-    test_asymmetric_encrypt_decrypt("epq_pke(slidey2)", generate_keypair, encrypt, decrypt, iterations=10000, plaintext_size=M_SIZE)
+    test_asymmetric_encrypt_decrypt("epq_pke(short inverse secret-key)", generate_keypair, encrypt, decrypt, iterations=10000, plaintext_size=trapdoor.SECURITY_LEVEL)
     
 if __name__ == "__main__":
     unit_test()
