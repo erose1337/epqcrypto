@@ -1,4 +1,4 @@
-from crypto.utilities import random_integer, modular_inverse
+from epqcrypto.utilities import random_integer, modular_inverse
 
 SECURITY_LEVEL = 32
 PADDING = 4 
