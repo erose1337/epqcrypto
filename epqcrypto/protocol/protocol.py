@@ -95,12 +95,17 @@ class Replay_Attack_Countermeasure(object):
             
     def __init__(self, nonce=0, hash_function=hash_function):
         self.nonce = nonce
-        self.last_received_none = 0
+        self.last_received_nonce = 0
         self.hash_function = hash_function
         self.hash_size = len(hash_function(''))
         self.state = bytearray(self.hash_size)
-        
-    def send(self, data):        
+                
+    def send(self, data):    
+        #print "Sender {} incrementing nonce {} -> {} to send:".format(id(self), self.nonce, self.nonce + 1)
+        #if len(data) > 80:
+        #    print data[:80]
+        #else:
+        #    print data
         self.nonce += 1                     
         nonce = self.nonce        
         _hash = self.hash_function(str(nonce) + self.state + data)        
@@ -110,10 +115,11 @@ class Replay_Attack_Countermeasure(object):
     def receive(self, data):
         nonce, _hash, data = load_data(data)
         assert isinstance(nonce, int)                     
-        if nonce <= self.last_received_none:
-            raise ValueError("Invalid nonce")
+        if nonce <= self.last_received_nonce:
+            raise ValueError("Invalid nonce {}; Expecting {}".format(nonce, self.last_received_nonce + 1))
         else:            
-            self.last_received_none += 1
+         #   print id(self), "Receiver incrementing nonce {} -> {}".format(self.last_received_nonce, nonce)
+            self.last_received_nonce = nonce
  
         if self.hash_function(str(nonce) + self.state + data) != _hash:
             raise ValueError("Invalid hash")
@@ -156,8 +162,9 @@ class Replay_Attack_Countermeasure(object):
 
 class Basic_Connection(object):
                 
-    def __init__(self):        
+    def __init__(self):                
         self.replay_attack_countermeasure = Replay_Attack_Countermeasure()                 
+        #print("{} initialized with new RAC {}".format(id(self), id(self.replay_attack_countermeasure)))
         
     def send(self, data):
         return self.replay_attack_countermeasure.send(data)
@@ -199,6 +206,7 @@ class Secure_Connection(Basic_Connection):
         response = save_data(self.key_exchange_protocol.responder_establish_secret(challenge, public_key, ephemeral_public_key))
         self.stage = "accepted:confirming"
         response = self.send(response)
+        #print("{} confirmed connection".format(id(self)))
         self.connection_confirmed = True
         return response
     
@@ -217,7 +225,7 @@ class Secure_Connection(Basic_Connection):
             
             Finishes initializing a secure connection with the peer.
             Returns a confirmation code, that should be sent to the remote peer and supplied to the responder_confirm_connection method. """                
-        assert self.stage == "connecting"
+        assert self.stage == "connecting"        
         packet = self.receive(packet)
         protocol = self.key_exchange_protocol
         ciphertext2, ciphertext3, confirmation_code = load_data(packet)

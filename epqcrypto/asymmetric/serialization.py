@@ -25,6 +25,7 @@ def test_serialized_public_key_deserialize_public_key():
     serialized = serialize_public_key(public_key)
     _public_key = deserialize_public_key(serialized)
     assert _public_key == public_key, (_public_key, public_key)
+    print("epqcrypto.asymmetric.serialization unit test passed")
     
 if __name__ == "__main__":
     test_serialized_public_key_deserialize_public_key()

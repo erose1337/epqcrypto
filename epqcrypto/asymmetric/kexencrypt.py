@@ -1,5 +1,5 @@
 """ Provides authenticated encryption and decryption functions using keyexchange and aead. 
-    Turns keyexchange into public key encryption (+ authenticated associated data). """    
+    Turns key exchange into public key encryption (+ authenticated associated data). """    
 import epqcrypto.asymmetric.kem as keyexchange
 import epqcrypto.symmetric.aead as aead
 from epqcrypto.persistence import save_data, load_data

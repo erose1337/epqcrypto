@@ -1,4 +1,5 @@
 import random
+import operator
 
 from math import log
 from os import urandom as random_bytes
@@ -10,9 +11,9 @@ def integer_to_bytes(integer, _bytes):
     
 def bytes_to_integer(data):
     output = 0    
-    size = len(data)
-    for index in range(size):
-        output |= data[index] << (8 * (size - 1 - index))
+    size = 8 * (len(data) - 1)
+    for index, byte in enumerate(data):
+        output |= byte << (size - (index << 3))
     return output
     
 def serialize_int(number):
@@ -124,4 +125,12 @@ def deterministic_random(amount, seed, nonce, hash_function=sha512):
                 
 def modular_subtraction(x, y, modulus):
     return (modulus + (x - y)) % modulus
+    
+def secret_split(m, size, count, modulus):    
+    splits = [random_integer(size) for counter in range(count - 1)]
+    splits.append((m - sum(splits)) % modulus)    
+    return splits
+     
+def dot_product(e, m):
+    return sum((e[i] * m[i] for i in range(len(e))))
     

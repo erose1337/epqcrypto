@@ -1,6 +1,5 @@
 import hashlib
 import hmac as _hmac
-import six # python 2/3 compatibility
 
 DEFAULT_HASH = "sha512"
 
@@ -21,7 +20,7 @@ def _expand(psuedorandom_key, length=32, info='', hash_function=DEFAULT_HASH):
     blocks += 1 if extra else 0
     for counter in range(blocks):
         outputs.append(_hmac.HMAC(psuedorandom_key, 
-                                  outputs[-1] + info + six.int2byte(counter), 
+                                  outputs[-1] + info + chr(counter), 
                                   hasher).digest())      
     return b''.join(outputs)[:length]
     
