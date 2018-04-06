@@ -28,7 +28,7 @@ def recover_and_derive_key(ciphertext, private_key, parameters=PARAMETERS, hash_
 def unit_test():
     from epqcrypto.unittesting import test_key_exchange
     from epqcrypto.asymmetric.trapdoor import generate_keypair
-    test_key_exchange("epq_kem(uppers2 secret-key)", generate_keypair, encapsulate_key, recover_key, iterations=10000, key_size=trapdoor.SECURITY_LEVEL)
+    test_key_exchange("epq.asymmetric.kem", generate_keypair, encapsulate_key, recover_key, iterations=10000, key_size=trapdoor.SECURITY_LEVEL)
     
 if __name__ == "__main__":
     unit_test()
