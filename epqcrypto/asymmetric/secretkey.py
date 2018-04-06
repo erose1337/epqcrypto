@@ -13,9 +13,8 @@ def generate_parameters(security_level=SECURITY_LEVEL):
     parameters["inverse_size"] = inverse_size = security_level    
     parameters["x_size"] = x_size = security_level    
     parameters["r_size"] = r_size = security_level 
-    parameters["q_size"] = q_size = (((inverse_size * 2) + x_size + r_size + 1) * 8)    
-    parameters["r_size"] -= 1
-    parameters["dimensions"] = dimensions = q_size / security_level    
+    parameters["q_size"] = q_size = (((inverse_size * 2) + x_size + r_size + 1) * 8)        
+    parameters["dimensions"] = dimensions = (q_size / 8) / security_level    
     parameters["inverse_shift"] = (x_size * 8) + int(ceil(log(dimensions, 2))) # second term adds headroom for additions
     parameters["lsb_mask"] = (2 ** (x_size * 8)) - 1
     parameters["lsb_modulus"] = 2 ** (x_size * 8)        

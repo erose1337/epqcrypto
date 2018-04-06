@@ -16,14 +16,14 @@ def generate_private_key(parameters=PARAMETERS, generate_secret_key=secretkey.ge
     
 def generate_public_key(private_key, parameters=PARAMETERS, encrypt=secretkey.encrypt):        
     dimensions = parameters["dimensions"]
-    assert dimensions > 1
+    assert dimensions > 1    
     public_key = [encrypt(1, private_key, parameters) for element_number in range(dimensions)]
     return public_key
     
 def generate_keypair(parameters=PARAMETERS, encrypt=secretkey.encrypt):
     private_key = generate_private_key(parameters)
-    public_key = generate_public_key(private_key, parameters, encrypt)
-    return public_key, private_key
+    public_key = generate_public_key(private_key, parameters, encrypt)    
+    return public_key, private_key[1]
     
 def public_key_operation(m, public_key, parameters=PARAMETERS):
     message_vector = secret_split(m, parameters["r_size"], len(public_key), parameters["lsb_modulus"])
@@ -31,7 +31,7 @@ def public_key_operation(m, public_key, parameters=PARAMETERS):
     return ciphertext
     
 def private_key_operation(ciphertext, private_key, parameters=PARAMETERS):
-    return secretkey.decrypt(ciphertext, private_key, parameters=PARAMETERS)
+    return secretkey.decrypt(ciphertext, (None, private_key), parameters=PARAMETERS)
     
 def compress_private_key(private_key, compression_function=secretkey.compress_secret_key):
     return compression_function(private_key)
